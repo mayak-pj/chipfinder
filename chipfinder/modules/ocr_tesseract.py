@@ -33,6 +33,16 @@ UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-./+#"
 LOWER = "abcdefghijklmnopqrstuvwxyz"
 
 
+def find_tesseract(app_dir: str, cmd: str = "") -> str:
+    """Путь к tesseract.exe: из настроек, затем встроенный (портативная сборка), затем стандартные места.
+    Пустая строка — искать в PATH (так на Mac и при обычной установке)."""
+    bundled = os.path.join(app_dir, "tesseract", "tesseract.exe")
+    for c in [cmd, bundled] + WIN_PATHS:
+        if c and os.path.isfile(c):
+            return c
+    return ""
+
+
 def _alnum(s: str) -> int:
     return len(re.findall(r"[A-Za-z0-9]", s))
 
@@ -50,14 +60,11 @@ class TesseractOCR(OCR):
         if pytesseract is None:
             self._error = "Не установлен пакет pytesseract"
             return
-        cmd = self.settings.get("tesseract_cmd", "")
-        candidates = [cmd] if cmd else []
-        candidates += WIN_PATHS
-        for c in candidates:
-            if c and os.path.isfile(c):
-                pytesseract.pytesseract.tesseract_cmd = c
-                break
-        # tessdata рядом с программой (можно положить свои обученные модели)
+        found = find_tesseract(self.ctx.app_dir, self.settings.get("tesseract_cmd", ""))
+        if found:
+            pytesseract.pytesseract.tesseract_cmd = found
+        # tessdata рядом с программой (можно положить свои обученные модели);
+        # встроенный Tesseract сам находит tesseract/tessdata рядом с tesseract.exe
         local_tessdata = os.path.join(self.ctx.app_dir, "tessdata")
         self._tessdata = local_tessdata if os.path.isdir(local_tessdata) else ""
         try:

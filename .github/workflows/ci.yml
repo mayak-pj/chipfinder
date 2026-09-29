@@ -67,3 +67,44 @@ jobs:
       - name: vermin
         shell: bash
         run: vermin --target=3.8- --no-tips chipfinder
+
+  portable:
+    # Портативная сборка для Win7 x64: артефакт на каждый push, релиз по тегу v*
+    needs: test
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+      - uses: actions/cache@v4
+        with:
+          path: dist/cache
+          key: portable-downloads-${{ hashFiles('tools/build_portable.py') }}
+      - name: Сборка
+        shell: bash
+        run: |
+          python -m pip install packaging==24.1
+          python tools/build_portable.py --out dist
+      - name: Пакеты импортируются встроенным Python
+        shell: cmd
+        run: dist\ChipFinder\python\python.exe -c "import PyQt5.QtWidgets, cv2, numpy, PIL, pypdf, bs4, requests, pytesseract, sqlite3, ssl; print('ok')"
+      - name: Самопроверка встроенным Python и встроенным Tesseract
+        shell: cmd
+        run: |
+          set "PATH=C:\Windows\system32;C:\Windows"
+          dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChipFinder_portable_win7_x64
+          path: dist/ChipFinder_portable_win7_x64.zip
+          compression-level: 0
+      - name: Релиз
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ChipFinder_portable_win7_x64.zip

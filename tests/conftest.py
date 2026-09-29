@@ -48,7 +48,8 @@ def ctx(tmp_path):
 
 
 def pytest_collection_modifyitems(config, items):
-    if shutil.which("tesseract"):
+    from chipfinder.modules.ocr_tesseract import find_tesseract
+    if shutil.which("tesseract") or find_tesseract(APP):
         return
     skip = pytest.mark.skip(reason="Tesseract не установлен")
     for it in items:
