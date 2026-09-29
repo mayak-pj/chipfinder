@@ -142,7 +142,8 @@ def fetch(url, sha256, cache_dir):
     path = os.path.join(cache_dir, url.rsplit("/", 1)[1])
     if not os.path.isfile(path):
         print("Скачиваю", url)
-        with urllib.request.urlopen(url, timeout=120) as r, open(path + ".part", "wb") as f:
+        req = urllib.request.Request(url, headers={"User-Agent": "ChipFinder-build/0.6 (portable build script)"})
+        with urllib.request.urlopen(req, timeout=300) as r, open(path + ".part", "wb") as f:
             shutil.copyfileobj(r, f, 1 << 20)
         os.replace(path + ".part", path)
     h = hashlib.sha256()
