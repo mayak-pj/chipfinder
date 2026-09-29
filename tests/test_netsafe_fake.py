@@ -12,8 +12,6 @@ from fakes.fake_http import FakeHttp
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(APP, "tools"))
 
-import record_fixture  # noqa: E402
-
 
 def make(tmp_path, fake):
     cfg = {"allowed_domains": ["ti.com"], "min_interval_sec": 0, "offline": False}
@@ -50,6 +48,7 @@ def test_http_error_and_exception(tmp_path):
 
 
 def test_record_fixture_from_file(tmp_path):
+    record_fixture = pytest.importorskip("record_fixture", reason="нет tools/ (портативная сборка)")
     src = tmp_path / "page.html"
     src.write_text("<html><script>evil()</script><style>a{}</style><p>LM358</p></html>", encoding="utf-8")
     out = tmp_path / "out"
