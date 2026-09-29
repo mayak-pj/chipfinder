@@ -45,7 +45,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   Готово, когда: `pytest -q -m "not live"`, `ruff check .`, `vermin --target=3.8- chipfinder` зелёные.
 - [x] `Sonnet` **0.4 CI.** `.github/workflows/ci.yml` — windows-2022 (Python 3.8, Tesseract через choco; если не ставится —
   `needs_tesseract` пропускаются) и macos-14 (arm64). pytest, ruff, vermin. Готово, когда: зелёные галочки.
-- [ ] `Sonnet` **0.5 Подмена сети и фикстуры.** `tests/fakes/fake_http.py` (URL → фикстура/код/редирект/исключение),
+- [x] `Sonnet` **0.5 Подмена сети и фикстуры.** `tests/fakes/fake_http.py` (URL → фикстура/код/редирект/исключение),
   выделить «транспорт» в SafeHttp (минимальное изменение), `tools/record_fixture.py` (скачивает страницу через
   SafeHttp, вырезает скрипты/стили, пишет `tests/fixtures/sources/<adapter>/<name>.html` + `meta.json`).
   Тесты: редирект на чужой домен блокируется; запись фикстуры из локального файла.

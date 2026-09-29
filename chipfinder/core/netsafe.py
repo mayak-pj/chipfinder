@@ -69,7 +69,11 @@ def domain_match(host: str, patterns: List[str]) -> bool:
 
 
 class SafeHttp:
-    def __init__(self, net_cfg: Dict, quarantine_dir: str, logger: logging.Logger) -> None:
+    def __init__(self, net_cfg: Dict, quarantine_dir: str, logger: logging.Logger,
+                 transport=None) -> None:
+        # transport(method, url, headers) -> объект, похожий на requests.Response;
+        # в тестах подменяется на tests/fakes/fake_http.py
+        self.transport = transport
         self.cfg = net_cfg
         self.quarantine_dir = quarantine_dir
         self.log = logger
@@ -88,7 +92,7 @@ class SafeHttp:
     # ---------- настройки ----------
     @property
     def offline(self) -> bool:
-        return bool(self.cfg.get("offline", False)) or requests is None
+        return bool(self.cfg.get("offline", False)) or (requests is None and self.transport is None)
 
     def add_allowed(self, domains: List[str]) -> None:
         for d in domains:
@@ -132,6 +136,13 @@ class SafeHttp:
             self._session = s
         return self._session
 
+    def _send(self, method: str, url: str, headers: Dict[str, str]):
+        """Транспорт: единственное место, где выполняется настоящий HTTP-запрос."""
+        if self.transport is not None:
+            return self.transport(method, url, headers)
+        return self._get_session().request(method, url, headers=headers, timeout=self.timeout,
+                                           allow_redirects=False, stream=True, verify=True)
+
     def _throttle(self, host: str) -> None:
         with self._lock:
             last = self._last.get(host, 0.0)
@@ -156,8 +167,7 @@ class SafeHttp:
                 headers["Referer"] = referer
             t0 = time.time()
             try:
-                r = self._get_session().request(method, cur, headers=headers, timeout=self.timeout,
-                                                allow_redirects=False, stream=True, verify=True)
+                r = self._send(method, cur, headers)
             except Exception as e:
                 net_log.info("ERR\t%s\t%s", cur, type(e).__name__)
                 raise

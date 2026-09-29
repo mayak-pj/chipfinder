@@ -7,3 +7,4 @@
 | 2026-09-29 | 0.2 | Окружение Mac M4: .venv (Python 3.8), PyQt5-Qt5 5.15.19 для darwin, tools/setup_mac.sh; поворот в OCR определяется по gray и clahe (Tesseract 5.5) | — | самопроверка (OCR изменён) |
 | 2026-09-29 | 0.3 | Тесты на pytest (conftest с фикстурой ctx, метки live/needs_tesseract/mytest), requirements-dev.txt, pyproject.toml (ruff py38), --selftest запускает pytest | — | не нужно |
 | 2026-09-29 | 0.4 | CI: .github/workflows/ci.yml (windows-2022 + macos-14, pytest/ruff/vermin, Tesseract через choco/brew) | — | не нужно |
+| 2026-09-29 | 0.5 | Транспорт в SafeHttp (`_send`, параметр `transport`), tests/fakes/fake_http.py, tools/record_fixture.py, тесты редиректа и записи фикстуры | — | не нужно |
