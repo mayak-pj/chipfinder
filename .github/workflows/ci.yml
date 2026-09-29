@@ -76,6 +76,7 @@ jobs:
       contents: write
     env:
       QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
