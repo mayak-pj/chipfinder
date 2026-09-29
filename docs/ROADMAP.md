@@ -43,7 +43,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   `requirements-dev.txt`: pytest 8.3.x, pytest-qt, ruff, vermin, reportlab. Метка `mytest` — тесты на файлах из
   `my_test/` (пропускаются, если папки нет; в CI её нет). `pyproject.toml`: ruff target py38, маркеры.
   Готово, когда: `pytest -q -m "not live"`, `ruff check .`, `vermin --target=3.8- chipfinder` зелёные.
-- [ ] `Sonnet` **0.4 CI.** `.github/workflows/ci.yml` — windows-2022 (Python 3.8, Tesseract через choco; если не ставится —
+- [x] `Sonnet` **0.4 CI.** `.github/workflows/ci.yml` — windows-2022 (Python 3.8, Tesseract через choco; если не ставится —
   `needs_tesseract` пропускаются) и macos-14 (arm64). pytest, ruff, vermin. Готово, когда: зелёные галочки.
 - [ ] `Sonnet` **0.5 Подмена сети и фикстуры.** `tests/fakes/fake_http.py` (URL → фикстура/код/редирект/исключение),
   выделить «транспорт» в SafeHttp (минимальное изменение), `tools/record_fixture.py` (скачивает страницу через

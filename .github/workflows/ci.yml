@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # Windows: обычный Python 3.8 (совпадает с целевым 3.8.10)
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: "3.8"
+
+      # macOS arm64: Python 3.8 через uv (в setup-python его нет для arm64)
+      - uses: astral-sh/setup-uv@v5
+        if: runner.os == 'macOS'
+      - name: Python 3.8 через uv (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          uv python install 3.8
+          uv venv --python 3.8 .venv
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Tesseract (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        continue-on-error: true   # не поставился — тесты needs_tesseract пропускаются
+        run: |
+          choco install tesseract --no-progress -y
+          "C:\Program Files\Tesseract-OCR" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Tesseract (macOS)
+        if: runner.os == 'macOS'
+        run: brew install tesseract
+
+      - name: Зависимости
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            uv pip install --python .venv/bin/python -r requirements-dev.txt
+          else
+            python -m pip install --upgrade pip
+            python -m pip install -r requirements-dev.txt
+          fi
+
+      - name: pytest
+        shell: bash
+        run: python -m pytest -q -m "not live"
+
+      - name: ruff
+        shell: bash
+        run: ruff check .
+
+      - name: vermin
+        shell: bash
+        run: vermin --target=3.8- --no-tips chipfinder
