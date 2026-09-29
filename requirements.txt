@@ -1,0 +1,18 @@
+# Версии подобраны под Windows 7 + Python 3.8 (x64)
+numpy==1.24.4
+opencv-python-headless==4.5.5.64
+PyQt5==5.15.10
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.13.0
+pytesseract==0.3.10
+Pillow==10.4.0
+packaging==24.1
+requests==2.31.0
+urllib3==2.2.2
+idna==3.7
+charset-normalizer==3.3.2
+certifi
+beautifulsoup4==4.12.3
+soupsieve==2.5
+pypdf==4.3.1
+typing_extensions==4.12.2

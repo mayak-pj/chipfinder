@@ -1,0 +1,26 @@
+# личные папки — никогда не в git
+my_test/
+my_reports/
+# окружения и пакеты
+.venv/
+venv/
+wheels/
+__pycache__/
+*.pyc
+# данные программы
+data/library/*
+!data/library/.keep
+data/quarantine/
+*.sqlite
+*.sqlite-journal
+logs/
+reports/
+config.json
+# архивы и сборки
+*.zip
+*.part*
+build/
+dist/
+# система
+.DS_Store
+Thumbs.db
