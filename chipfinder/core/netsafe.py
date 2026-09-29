@@ -22,7 +22,7 @@ import os
 import re
 import threading
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from urllib.parse import urljoin, urlsplit
 
 try:

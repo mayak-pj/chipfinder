@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter, OrderedDict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Tuple
 
 from ..core.interfaces import MemoryAnalyzer
 from ..core.models import MemoryItem, MemoryVerdict

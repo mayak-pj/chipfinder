@@ -16,7 +16,6 @@ import io
 import json
 import os
 import re
-import shutil
 import sqlite3
 import threading
 import zipfile

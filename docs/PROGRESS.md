@@ -5,3 +5,4 @@
 | 2026-09-29 | v1 | Рабочая версия: OCR, локальная база, поиск v1, сверка, память, окно | — | установка, самопроверка |
 | 2026-09-29 | 0.1 | git init, .gitignore, первый коммит v1, приватный репозиторий chipfinder на GitHub (SSH) | — | не нужно |
 | 2026-09-29 | 0.2 | Окружение Mac M4: .venv (Python 3.8), PyQt5-Qt5 5.15.19 для darwin, tools/setup_mac.sh; поворот в OCR определяется по gray и clahe (Tesseract 5.5) | — | самопроверка (OCR изменён) |
+| 2026-09-29 | 0.3 | Тесты на pytest (conftest с фикстурой ctx, метки live/needs_tesseract/mytest), requirements-dev.txt, pyproject.toml (ruff py38), --selftest запускает pytest | — | не нужно |

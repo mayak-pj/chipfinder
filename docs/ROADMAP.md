@@ -38,7 +38,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   `requirements.txt`; где нет arm64-колёс нужной версии — маркеры `; sys_platform == "darwin"` с ближайшей
   версией (Windows-версии не трогать). `brew install tesseract`. Скрипт `tools/setup_mac.sh`.
   Готово, когда: `python run.py --selftest` зелёный на Mac, окно открывается.
-- [ ] `Sonnet` **0.3 pytest и линтеры.** Цель: перевести `tests/test_pipeline.py` и `tests/test_web_offline.py` на pytest
+- [x] `Sonnet` **0.3 pytest и линтеры.** Цель: перевести `tests/test_pipeline.py` и `tests/test_web_offline.py` на pytest
   (фикстура `ctx` во временной папке в `tests/conftest.py`), метки `live` и `needs_tesseract`.
   `requirements-dev.txt`: pytest 8.3.x, pytest-qt, ruff, vermin, reportlab. Метка `mytest` — тесты на файлах из
   `my_test/` (пропускаются, если папки нет; в CI её нет). `pyproject.toml`: ruff target py38, маркеры.

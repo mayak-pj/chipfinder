@@ -19,10 +19,8 @@ def main():
         print("Нужен Python 3.8 или новее")
         return 1
     if "--selftest" in sys.argv:
-        sys.path.insert(0, os.path.join(d, "tests"))
-        import test_pipeline
-        import test_web_offline
-        return test_pipeline.main() or test_web_offline.main()
+        import pytest
+        return int(pytest.main(["-q", "-m", "not live", os.path.join(d, "tests")]))
     from chipfinder.gui.main_window import main as gui_main
     return gui_main(d)
 

@@ -31,7 +31,8 @@ MAKER_WORDS = {
     "HOLTEK": "Holtek", "STC": "STC", "PHILIPS": "Philips", "FAIRCHILD": "Fairchild", "INFINEON": "Infineon",
     "MAXIM": "Maxim", "ANALOG": "Analog Devices", "RENESAS": "Renesas", "SAMSUNG": "Samsung",
     "HYNIX": "SK hynix", "MICRON": "Micron", "TOSHIBA": "Toshiba", "CYPRESS": "Cypress", "SIPEX": "Sipex",
-    "PADAUK": "Padauk", "MCHP": "Microchip", "MICROCHIP": "Microchip", "MXIC": "Macronix", "GIGADEVICE": "GigaDevice", "NUVOTON": "Nuvoton", "SILABS": "Silicon Labs", "FTDI": "FTDI", "PUYA": "Puya",
+    "PADAUK": "Padauk", "MCHP": "Microchip", "GIGADEVICE": "GigaDevice", "NUVOTON": "Nuvoton",
+    "SILABS": "Silicon Labs", "FTDI": "FTDI", "PUYA": "Puya",
 }
 JUNK = {"E3", "E4", "G4", "PB", "ROHS", "CHINA", "TAIWAN", "PHIL", "MALAYSIA", "KOREA", "JAPAN",
         "MADE", "IN", "USA", "THAI", "PHILIPPINES", "MAL", "MEX", "KOR", "CHN", "TWN"}
