@@ -129,15 +129,17 @@ class TesseractOCR(OCR):
             return OcrResult()
         say = progress or (lambda m: None)
 
-        # 1. Поворот — по варианту с контрастом (или первому)
-        probe = next((v for v in variants if v.name == "clahe"), variants[0])
+        # 1. Поворот — по лучшему из вариантов gray/clahe: CLAHE усиливает шум, и на некоторых
+        #    версиях Tesseract (5.5) по нему поворот не определяется.
+        probes = [v for v in variants if v.name in ("gray", "clahe")] or variants[:1]
         rotations = self.settings.get("rotations", [0, 90, 180, 270])
         best_rot, best = 0, -1.0
         for rot in rotations:
             say("OCR: пробую поворот %d°" % rot)
-            sc = self._score(self._run(rotate(probe.image, rot), 6))
-            if sc > best:
-                best_rot, best = rot, sc
+            for probe in probes:
+                sc = self._score(self._run(rotate(probe.image, rot), 6))
+                if sc > best:
+                    best_rot, best = rot, sc
 
         # 2. Все варианты при найденном повороте
         psms = self.settings.get("psm_modes", [6, 11])

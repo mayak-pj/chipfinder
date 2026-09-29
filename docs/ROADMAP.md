@@ -34,7 +34,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   `git config user.name` / `user.email`; чего не хватает — попросить пользователя (для `gh auth login` выбрать
   протокол SSH и существующий ключ). Файлы: `.gitignore`, `docs/PROGRESS.md`.
   Готово, когда: репозиторий на GitHub, `git ls-files` без запрещённого.
-- [ ] `Sonnet` **0.2 Окружение на Mac M4.** Цель: Python 3.8 arm64 (`uv python install 3.8`), `.venv`, установка
+- [x] `Sonnet` **0.2 Окружение на Mac M4.** Цель: Python 3.8 arm64 (`uv python install 3.8`), `.venv`, установка
   `requirements.txt`; где нет arm64-колёс нужной версии — маркеры `; sys_platform == "darwin"` с ближайшей
   версией (Windows-версии не трогать). `brew install tesseract`. Скрипт `tools/setup_mac.sh`.
   Готово, когда: `python run.py --selftest` зелёный на Mac, окно открывается.

@@ -2,7 +2,8 @@
 numpy==1.24.4
 opencv-python-headless==4.5.5.64
 PyQt5==5.15.10
-PyQt5-Qt5==5.15.2
+PyQt5-Qt5==5.15.2; sys_platform != "darwin"
+PyQt5-Qt5==5.15.19; sys_platform == "darwin"
 PyQt5-sip==12.13.0
 pytesseract==0.3.10
 Pillow==10.4.0
