@@ -99,6 +99,13 @@ jobs:
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"
           dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
+      - name: Окно открывается из папки с русским именем и пробелом (настоящий оконный модуль Qt)
+        shell: bash
+        run: |
+          mkdir -p "dist/Мои программы"
+          cp -r dist/ChipFinder "dist/Мои программы/"
+          cd "dist/Мои программы/ChipFinder"
+          env -u QT_QPA_PLATFORM ./python/python.exe run.py --smoke
       - uses: actions/upload-artifact@v4
         with:
           name: ChipFinder_portable_win7_x64

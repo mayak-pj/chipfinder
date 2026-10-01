@@ -744,4 +744,6 @@ def main(app_dir: str) -> int:
     args = [a for a in sys.argv[1:] if os.path.exists(a)]
     if args:
         w.add_files(args)
+    if "--smoke" in sys.argv:      # проверка сборки: окно открылось — выходим
+        QTimer.singleShot(500, app.quit)
     return app.exec_()
