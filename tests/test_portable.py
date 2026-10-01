@@ -30,6 +30,13 @@ def test_find_tesseract_bundled(tmp_path):
     assert find_tesseract(app, str(tmp_path / "нет.exe")) == exe
 
 
+def test_qt_plugins_dir_found():
+    # путь к плагинам Qt задаётся явно: из папки с русскими буквами PyQt5 сам его не находит
+    pytest.importorskip("PyQt5")
+    from chipfinder.gui.main_window import qt_plugins_dir
+    assert os.path.isdir(os.path.join(qt_plugins_dir(), "platforms"))
+
+
 def test_requirements_for_windows():
     reqs = bp.windows_requirements(bp.read_lines(os.path.join(bp.ROOT, "requirements.txt")))
     assert "PyQt5-Qt5==5.15.2" in reqs

@@ -8,7 +8,7 @@ import io
 import os
 import sys
 
-from PyQt5.QtCore import QSize, Qt, QTimer, QUrl
+from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl
 from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QImage, QPixmap
 from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QFileDialog, QFormLayout,
                              QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem,
@@ -729,7 +729,19 @@ class MainWindow(QMainWindow):
         e.accept()
 
 
+def qt_plugins_dir() -> str:
+    """Папка плагинов Qt внутри пакета PyQt5 (пустая строка, если её нет)."""
+    import PyQt5
+    d = os.path.join(os.path.dirname(os.path.abspath(PyQt5.__file__)), "Qt5", "plugins")
+    return d if os.path.isdir(os.path.join(d, "platforms")) else ""
+
+
 def main(app_dir: str) -> int:
+    # PyQt5 сам сообщает Qt путь к плагинам, но не в Юникоде: из папки с русскими буквами окно
+    # не запускается («no Qt platform plugin could be initialized»). Задаём путь явно.
+    plugins = qt_plugins_dir()
+    if plugins:
+        QCoreApplication.addLibraryPath(plugins)
     if hasattr(Qt, "AA_EnableHighDpiScaling"):
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     app = QApplication(sys.argv)

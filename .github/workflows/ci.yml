@@ -101,6 +101,7 @@ jobs:
           dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
       - name: Окно открывается из папки с русским именем и пробелом (настоящий оконный модуль Qt)
         shell: bash
+        timeout-minutes: 3     # при ошибке Qt показывает окно и ждёт «OK» — шаг зависает
         run: |
           mkdir -p "dist/Мои программы"
           cp -r dist/ChipFinder "dist/Мои программы/"
