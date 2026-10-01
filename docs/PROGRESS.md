@@ -9,3 +9,4 @@
 | 2026-09-29 | 0.4 | CI: .github/workflows/ci.yml (windows-2022 + macos-14, pytest/ruff/vermin, Tesseract через choco/brew) | — | не нужно |
 | 2026-09-29 | 0.5 | Транспорт в SafeHttp (`_send`, параметр `transport`), tests/fakes/fake_http.py, tools/record_fixture.py, тесты редиректа и записи фикстуры | — | не нужно |
 | 2026-09-29 | 0.6 ★ | tools/build_portable.py (embeddable Python 3.8.10 + колёса cp38 win_amd64 + Tesseract 5.3.0 + ChipFinder.bat/Самопроверка.bat), встроенный Tesseract ищется в папке программы, CI-задача portable: самопроверка встроенным Python, артефакт, релиз по тегу v* | — | распаковать архив, Самопроверка.bat, ChipFinder.bat, OCR фото |
+| 2026-10-01 | 0.6 ★ (исправление) | По отчёту с Win7: окно не запускалось из папки с русскими буквами (Qt не находил плагины) — путь к плагинам задаётся явно; `run.py --smoke`; CI открывает окно из папки с русским именем | b8528bd | новый архив: ChipFinder.bat из папки с русским именем, OCR фото |
