@@ -1,76 +1,75 @@
 {
-  "_readme": "Источники интернет-поиска. Всё можно менять без программирования: включать/выключать (enabled), добавлять сайты, менять запросы. {part} — партномер, {code} — короткий код маркировки, {maker_site} — сайт производителя. Программа обращается только к доменам, перечисленным здесь или в config.json → network.allowed_domains. Шаблоны адресов сайтов проверяйте через меню «Сеть → Диагностика».",
-
-  "engines": {
-    "duckduckgo": {"name": "DuckDuckGo (HTML)", "url": "https://html.duckduckgo.com/html/?q={q}", "decoder": "ddg", "domains": ["duckduckgo.com"], "enabled": true},
-    "bing":       {"name": "Bing", "url": "https://www.bing.com/search?q={q}&setlang=en", "decoder": "bing", "domains": ["bing.com"], "enabled": true},
-    "mojeek":     {"name": "Mojeek", "url": "https://www.mojeek.com/search?q={q}", "decoder": "plain", "domains": ["mojeek.com"], "enabled": true},
-    "brave":      {"name": "Brave Search", "url": "https://search.brave.com/search?q={q}", "decoder": "plain", "domains": ["search.brave.com"], "enabled": true},
-    "yandex":     {"name": "Яндекс", "url": "https://yandex.ru/search/?text={q}", "decoder": "plain", "domains": ["yandex.ru"], "enabled": true},
-    "baidu":      {"name": "Baidu 百度", "url": "https://www.baidu.com/s?wd={q}", "decoder": "baidu", "domains": ["baidu.com"], "enabled": true},
-    "bing_cn":    {"name": "Bing China 必应", "url": "https://cn.bing.com/search?q={q}&ensearch=0", "decoder": "bing", "domains": ["cn.bing.com"], "enabled": true},
-    "sogou":      {"name": "Sogou 搜狗", "url": "https://www.sogou.com/web?query={q}", "decoder": "plain", "domains": ["sogou.com"], "enabled": true},
-    "so360":      {"name": "360 搜索", "url": "https://www.so.com/s?q={q}", "decoder": "plain", "domains": ["so.com"], "enabled": true},
-    "google":     {"name": "Google", "url": "https://www.google.com/search?q={q}&hl=en", "decoder": "google", "domains": ["google.com"], "enabled": false}
-  },
+  "_readme": "Источники интернет-поиска (схема 2). Всё можно менять без программирования. levels — порядок уровней поиска (enabled: вкл/выкл целого уровня). sources — источники: id; adapter — тип адаптера; level — уровень; lang — язык (en, zh, ru; пусто — по запросу); domains — домены, к которым источник обращается (попадают в белый список); queries — свои шаблоны запросов (пусто — общие); enabled — вкл/выкл; needs_key — имя ключа в config.json → acquire.api_keys (без ключа источник пропускается). {part} — партномер, {code} — короткий код маркировки, {maker_site} — сайт производителя, {q} — запрос. Программа обращается только к доменам, перечисленным здесь или в config.json → network.allowed_domains. Шаблоны адресов сайтов проверяйте через меню «Сеть → Диагностика».",
+  "version": 2,
 
   "levels": [
-    {
-      "id": "catalog", "name": "1. Сайты-каталоги datasheet", "enabled": true,
-      "direct": [
-        {"name": "AllDatasheet", "url": "https://www.alldatasheet.com/view.jsp?Searchword={part}", "domains": ["alldatasheet.com"], "follow": 1},
-        {"name": "Datasheet Archive", "url": "https://www.datasheetarchive.com/search?q={part}", "domains": ["datasheetarchive.com"], "follow": 1},
-        {"name": "FindChips", "url": "https://www.findchips.com/search/{part}", "domains": ["findchips.com"], "follow": 0}
-      ],
-      "engines": ["duckduckgo", "bing", "mojeek", "brave"],
-      "queries": [
-        "{part} datasheet pdf",
-        "{part} datasheet site:alldatasheet.com OR site:datasheetspdf.com OR site:datasheet4u.com OR site:datasheetarchive.com",
-        "{part} pdf site:datasheet.lcsc.com OR site:mouser.com OR site:digikey.com OR site:farnell.com"
-      ]
-    },
-    {
-      "id": "maker", "name": "2. Сайт производителя", "enabled": true,
-      "engines": ["duckduckgo", "bing", "mojeek"],
-      "queries": ["{part} datasheet site:{maker_site}"]
-    },
-    {
-      "id": "china", "name": "3. Китайский интернет", "enabled": true,
-      "direct": [
-        {"name": "立创商城 LCSC", "url": "https://so.szlcsc.com/global.html?k={part}", "domains": ["szlcsc.com", "lcsc.com"], "follow": 1},
-        {"name": "半导小芯 Semiee", "url": "https://www.semiee.com/search?searchModel={part}", "domains": ["semiee.com"], "follow": 1}
-      ],
-      "engines": ["baidu", "bing_cn", "sogou", "so360"],
-      "queries": [
-        "{part} 数据手册 pdf",
-        "{part} 规格书",
-        "{part} datasheet site:elecfans.com OR site:21ic.com OR site:dzsc.com OR site:semiee.com",
-        "{part} site:eeworld.com.cn OR site:51hei.com OR site:amobbs.com OR site:icpdf.com"
-      ]
-    },
-    {
-      "id": "forum", "name": "4. Форумы инженеров", "enabled": true,
-      "engines": ["duckduckgo", "bing", "yandex"],
-      "queries": [
-        "{part} site:eevblog.com OR site:electronics.stackexchange.com OR site:badcaps.net OR site:reddit.com",
-        "{part} datasheet site:electronix.ru OR site:radiokot.ru OR site:forum.cxem.net OR site:kazus.ru OR site:vrtp.ru",
-        "{part} даташит"
-      ]
-    },
-    {
-      "id": "marking", "name": "5. Базы SMD-кодов маркировки", "enabled": true, "for_codes": true,
-      "engines": ["duckduckgo", "bing", "baidu", "yandex"],
-      "queries": [
-        "\"{code}\" SMD marking code",
-        "{code} 丝印 芯片",
-        "{code} маркировка SMD",
-        "{code} site:s-manuals.com OR site:alltransistors.com OR site:smd.yooneed.one"
-      ]
-    },
-    {
-      "id": "github", "name": "6. GitHub (репозитории с документацией)", "enabled": true,
-      "github_api": "https://api.github.com/search/repositories?q={part}+in:name,description,readme&per_page=10"
-    }
+    {"id": "catalog", "name": "1. Сайты-каталоги datasheet", "enabled": true},
+    {"id": "maker",   "name": "2. Сайт производителя", "enabled": true},
+    {"id": "search",  "name": "Поисковики (английский)", "enabled": true},
+    {"id": "china",   "name": "3. Китайский интернет", "enabled": true},
+    {"id": "russian", "name": "Русский интернет", "enabled": true},
+    {"id": "forum",   "name": "4. Форумы инженеров", "enabled": true},
+    {"id": "marking", "name": "5. Базы SMD-кодов маркировки", "enabled": true, "for_codes": true},
+    {"id": "github",  "name": "6. GitHub (репозитории с документацией)", "enabled": true}
+  ],
+
+  "sources": [
+    {"id": "alldatasheet", "adapter": "direct_url", "name": "AllDatasheet", "level": "catalog", "lang": "en", "url": "https://www.alldatasheet.com/view.jsp?Searchword={part}", "domains": ["alldatasheet.com"], "follow": 1, "enabled": true},
+    {"id": "datasheetarchive", "adapter": "direct_url", "name": "Datasheet Archive", "level": "catalog", "lang": "en", "url": "https://www.datasheetarchive.com/search?q={part}", "domains": ["datasheetarchive.com"], "follow": 1, "enabled": true},
+    {"id": "findchips", "adapter": "direct_url", "name": "FindChips", "level": "catalog", "lang": "en", "url": "https://www.findchips.com/search/{part}", "domains": ["findchips.com"], "follow": 0, "enabled": true},
+    {"id": "catalog_queries", "adapter": "engine_queries", "name": "Каталоги через поисковики", "level": "catalog", "lang": "en", "enabled": true,
+     "via": ["duckduckgo", "bing", "mojeek", "brave"],
+     "queries": [
+       "{part} datasheet pdf",
+       "{part} datasheet site:alldatasheet.com OR site:datasheetspdf.com OR site:datasheet4u.com OR site:datasheetarchive.com",
+       "{part} pdf site:datasheet.lcsc.com OR site:mouser.com OR site:digikey.com OR site:farnell.com"
+     ]},
+
+    {"id": "maker_queries", "adapter": "engine_queries", "name": "Сайт производителя через поисковики", "level": "maker", "lang": "en", "enabled": true,
+     "via": ["duckduckgo", "bing", "mojeek"],
+     "queries": ["{part} datasheet site:{maker_site}"]},
+
+    {"id": "google", "adapter": "google_api", "name": "Google", "level": "search", "lang": "en", "url": "https://www.googleapis.com/customsearch/v1?key={key}&cx={cx}&q={q}", "domains": ["googleapis.com"], "needs_key": "google_api", "enabled": true},
+    {"id": "duckduckgo", "adapter": "engine_html", "name": "DuckDuckGo", "level": "search", "lang": "en", "url": "https://html.duckduckgo.com/html/?q={q}", "decoder": "ddg", "domains": ["duckduckgo.com"], "enabled": true},
+    {"id": "bing", "adapter": "engine_html", "name": "Bing", "level": "search", "lang": "en", "url": "https://www.bing.com/search?q={q}&setlang=en", "decoder": "bing", "domains": ["bing.com"], "enabled": true},
+    {"id": "mojeek", "adapter": "engine_html", "name": "Mojeek", "level": "search", "lang": "en", "url": "https://www.mojeek.com/search?q={q}", "decoder": "plain", "domains": ["mojeek.com"], "enabled": true},
+    {"id": "brave", "adapter": "engine_html", "name": "Brave Search", "level": "search", "lang": "en", "url": "https://search.brave.com/search?q={q}", "decoder": "plain", "domains": ["search.brave.com"], "enabled": true},
+
+    {"id": "lcsc", "adapter": "direct_url", "name": "立创商城 LCSC", "level": "china", "lang": "zh", "label": "立创商城 szlcsc.com", "url": "https://so.szlcsc.com/global.html?k={part}", "domains": ["szlcsc.com", "lcsc.com"], "follow": 1, "enabled": true},
+    {"id": "semiee", "adapter": "direct_url", "name": "半导小芯 Semiee", "level": "china", "lang": "zh", "label": "半导小芯 semiee.com", "url": "https://www.semiee.com/search?searchModel={part}", "domains": ["semiee.com"], "follow": 1, "enabled": true},
+    {"id": "baidu", "adapter": "engine_html", "name": "百度", "level": "china", "lang": "zh", "url": "https://www.baidu.com/s?wd={q}", "decoder": "baidu", "domains": ["baidu.com"], "enabled": true},
+    {"id": "bing_cn", "adapter": "engine_html", "name": "必应", "level": "china", "lang": "zh", "url": "https://cn.bing.com/search?q={q}&ensearch=0", "decoder": "bing", "domains": ["cn.bing.com"], "enabled": true},
+    {"id": "sogou", "adapter": "engine_html", "name": "搜狗", "level": "china", "lang": "zh", "url": "https://www.sogou.com/web?query={q}", "decoder": "plain", "domains": ["sogou.com"], "enabled": true},
+    {"id": "so360", "adapter": "engine_html", "name": "360搜索", "level": "china", "lang": "zh", "url": "https://www.so.com/s?q={q}", "decoder": "plain", "domains": ["so.com"], "enabled": true},
+    {"id": "china_queries", "adapter": "engine_queries", "name": "Китайские сайты через поисковики", "level": "china", "lang": "zh", "enabled": true,
+     "via": ["baidu", "bing_cn", "sogou", "so360"],
+     "queries": [
+       "{part} 数据手册 pdf",
+       "{part} 规格书",
+       "{part} datasheet site:elecfans.com OR site:21ic.com OR site:dzsc.com OR site:semiee.com",
+       "{part} site:eeworld.com.cn OR site:51hei.com OR site:amobbs.com OR site:icpdf.com"
+     ]},
+
+    {"id": "yandex", "adapter": "engine_html", "name": "Яндекс", "level": "russian", "lang": "ru", "url": "https://yandex.ru/search/?text={q}", "decoder": "plain", "domains": ["yandex.ru"], "enabled": true},
+
+    {"id": "forum_queries", "adapter": "engine_queries", "name": "Форумы через поисковики", "level": "forum", "lang": "", "enabled": true,
+     "via": ["duckduckgo", "bing", "yandex"],
+     "queries": [
+       "{part} site:eevblog.com OR site:electronics.stackexchange.com OR site:badcaps.net OR site:reddit.com",
+       "{part} datasheet site:electronix.ru OR site:radiokot.ru OR site:forum.cxem.net OR site:kazus.ru OR site:vrtp.ru",
+       "{part} даташит"
+     ]},
+
+    {"id": "marking_queries", "adapter": "engine_queries", "name": "Коды маркировки через поисковики", "level": "marking", "lang": "", "enabled": true,
+     "via": ["duckduckgo", "bing", "baidu", "yandex"],
+     "queries": [
+       "\"{code}\" SMD marking code",
+       "{code} 丝印 芯片",
+       "{code} маркировка SMD",
+       "{code} site:s-manuals.com OR site:alltransistors.com OR site:smd.yooneed.one"
+     ]},
+
+    {"id": "github", "adapter": "github_api", "name": "GitHub", "level": "github", "lang": "en", "url": "https://api.github.com/search/repositories?q={part}+in:name,description,readme&per_page=10", "domains": ["api.github.com", "github.com", "raw.githubusercontent.com"], "enabled": true}
   ],
 
   "maker_sites": {

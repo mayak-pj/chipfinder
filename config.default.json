@@ -60,5 +60,9 @@
     "allowed_domains": [],
     "allow_http": [],
     "blocked_domains": []
+  },
+
+  "acquire": {
+    "api_keys": {"google_api": {"key": "", "cx": ""}}
   }
 }

@@ -34,9 +34,17 @@ NETWORK_BLOCK_MARKERS = ["web filter", "webfilter", "forcepoint", "fortiguard", 
                          "заблокирован", "blocked by", "url filtering", "proxy authentication"]
 
 
+def _v1(sources):
+    """sources.json схемы 2 → прежний вид (engines + levels); программа уже в sys.path."""
+    from chipfinder.acquire.registry import legacy_sources
+    return legacy_sources(sources)
+
+
 def collect_domains(sources):
     """Отсортированный список (хост, где_встречается) — главные страницы для проверки."""
     hosts = {}
+    extra = [(d, s["id"]) for s in sources.get("sources", []) for d in s.get("domains", [])]
+    sources = _v1(sources)
 
     def add(host, where):
         host = (host or "").lower().strip(".")
@@ -55,12 +63,15 @@ def collect_domains(sources):
         add("www." + dom, "производитель " + maker)
     for dom in sources.get("pdf_hosts", []):
         add("www." + dom if dom.count(".") < 2 else dom, "хост PDF")
+    for dom, where in extra:
+        add("www." + dom if dom.count(".") < 2 else dom, "источник " + where)
     return sorted(hosts.items())
 
 
 def collect_searches(sources, chips=CHIPS):
     """[(имя, чип, url)] — выдача поисковиков и прямых адресов каталогов."""
     out = []
+    sources = _v1(sources)
     for chip in chips:
         for key, e in sorted(sources.get("engines", {}).items()):
             q = chip + " datasheet pdf"
@@ -199,9 +210,9 @@ def run(ctx):
         sources = json.load(f)
     if ctx.app_dir not in sys.path:
         sys.path.insert(0, ctx.app_dir)
-    domains = collect_domains(sources)
-    searches = collect_searches(sources)
     try:
+        domains = collect_domains(sources)
+        searches = collect_searches(sources)
         http, net = make_http(ctx.app_dir, [h for h, _ in domains] + [urlsplit(u).hostname for _, _, u in searches],
                               ctx.work_dir)
     except BaseException:  # noqa

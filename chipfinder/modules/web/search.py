@@ -16,6 +16,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote_plus, urlsplit
 
+from ...acquire.registry import legacy_sources
 from ...core.config import read_json, resolve_path
 from ...core.interfaces import CancelToken, ProgressFn, WebSearch
 from ...core.models import Candidate, DatasheetHit, DownloadResult
@@ -37,7 +38,7 @@ class MultiLevelWebSearch(WebSearch):
 
     def __init__(self, settings, ctx):
         super().__init__(settings, ctx)
-        self.sources = read_json(os.path.join(ctx.app_dir, "data", "sources.json"))
+        self.sources = legacy_sources(read_json(os.path.join(ctx.app_dir, "data", "sources.json")))
         net_cfg = dict(ctx.config.get("network", {}))
         quarantine = resolve_path(ctx.app_dir, ctx.config["paths"]["quarantine_dir"])
         self.http = SafeHttp(net_cfg, quarantine, ctx.log)
