@@ -41,6 +41,7 @@ WIN_ENV = {"sys_platform": "win32", "platform_system": "Windows", "os_name": "nt
 
 INCLUDE = ["run.py", "config.default.json", "README.md", "requirements.txt", "pyproject.toml",
            "chipfinder", "plugins", "data", "tests"]
+CHECKS_SRC = os.path.join(ROOT, "tools", "win7_pack")      # исходники проверочного набора -> checks/ в сборке
 SKIP_DIRS = {"__pycache__", ".pytest_cache"}
 SKIP_EXT = (".pyc", ".sqlite", ".sqlite-journal")
 SKIP_PREFIX = ("data/quarantine/",)
@@ -70,6 +71,15 @@ BATS = {
         'echo.\n'
         'if "%RC%"=="0" (echo САМОПРОВЕРКА ПРОЙДЕНА) else (echo САМОПРОВЕРКА НЕ ПРОЙДЕНА, код %RC%)\n'
         'echo Отчёт: logs\\selftest.txt\n'
+        'pause\n'),
+    "Проверка на работе.bat": (
+        '@echo off\n'
+        'rem Проверочный набор: один запуск -> один файл отчёт_<дата>.zip в этой папке\n'
+        'cd /d "%~dp0"\n' + _ENV +
+        'echo Идёт проверка, подождите 5-15 минут. Окно программы мигнёт - это нормально.\n'
+        '"%~dp0python\\python.exe" "%~dp0checks\\run_checks.py"\n'
+        'echo.\n'
+        'type "%~dp0checks\\ЧТО СДЕЛАТЬ.txt"\n'
         'pause\n'),
 }
 
@@ -107,6 +117,15 @@ def program_files():
                 if rel.startswith("data/library/") and fn != ".keep":
                     continue
                 out.append((p, rel))
+    return out
+
+
+def check_files():
+    """[(путь_на_диске, путь_в_сборке)] — проверочный набор (tools/win7_pack -> checks/)."""
+    out = []
+    for fn in sorted(os.listdir(CHECKS_SRC)):
+        if fn.endswith((".py", ".txt")) and not fn.startswith("test_"):
+            out.append((os.path.join(CHECKS_SRC, fn), "checks/" + fn))
     return out
 
 
@@ -213,7 +232,7 @@ def build(out_dir, with_tesseract=True, with_zip=True):
     if with_tesseract:
         extract_tesseract(fetch(TESS_URL, TESS_SHA256, cache), os.path.join(app, "tesseract"))
 
-    for src, rel in program_files():
+    for src, rel in program_files() + check_files():
         dst = os.path.join(app, *rel.split("/"))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)

@@ -81,3 +81,12 @@ def test_zip_russian_names_cp866(tmp_path):
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         assert {i.flag_bits & 0x800 for i in z.infolist()} == {0}   # без флага UTF-8
         assert "ChipFinder/run.py" in z.namelist()
+
+
+def test_checks_in_build():
+    files = [rel for _src, rel in bp.check_files()]
+    for need in ("checks/run_checks.py", "checks/sysinfo.py", "checks/selftest.py", "checks/window.py",
+                 "checks/ЧТО СДЕЛАТЬ.txt"):
+        assert need in files
+    assert "Проверка на работе.bat" in bp.BATS
+    assert "checks\\run_checks.py" in bp.BATS["Проверка на работе.bat"]
