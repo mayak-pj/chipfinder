@@ -18,6 +18,8 @@
   "engine.empty": "{engine}: «{query}» — не найдено",
   "engine.no_key": "{engine}: «{query}» — нет ключа API, пропуск",
   "engine.captcha": "{engine}: «{query}» — капча, пропуск (повтор через {minutes} мин)",
+  "engine.quota": "{engine}: «{query}» — лимит запросов API исчерпан, пропуск",
+  "engine.error": "{engine}: «{query}» — запрос не удался ({detail})",
 
   "site.search": "поиск на {site}…",
   "site.found": "поиск на {site} — найдено {n:совпадение|совпадения|совпадений}",

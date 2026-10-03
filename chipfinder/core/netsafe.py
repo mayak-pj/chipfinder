@@ -32,6 +32,11 @@ except ImportError:  # программа должна запускаться и
 
 net_log = logging.getLogger("chipfinder.net")
 
+
+def _masked(url: str) -> str:
+    """Адрес для журнала: значения key=/apikey=/token= скрыты (ключи API не попадают в логи)."""
+    return re.sub(r"(?i)\b(key|apikey|api_key|token)=[^&#\s]+", r"\1=***", url)
+
 USER_AGENT = ("Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/109.0 Safari/537.36")
 
@@ -172,7 +177,7 @@ class SafeHttp:
             try:
                 r = self._send(method, cur, headers)
             except Exception as e:
-                net_log.info("ERR\t%s\t%s", cur, type(e).__name__)
+                net_log.info("ERR\t%s\t%s", _masked(cur), type(e).__name__)
                 raise
             if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("Location"):
                 nxt = urljoin(cur, r.headers["Location"])
@@ -180,7 +185,7 @@ class SafeHttp:
                 if nparts.scheme == "http" and not domain_match(host_of(nxt), self.allow_http):
                     # сайт сам увёл на http (Sogou → /antispider): остаёмся на https, правила не ослабляем
                     nxt = nparts._replace(scheme="https").geturl()
-                net_log.info("%s\t%s\t-> %s", r.status_code, cur, nxt)
+                net_log.info("%s\t%s\t-> %s", r.status_code, _masked(cur), _masked(nxt))
                 r.close()
                 cur = nxt
                 continue
@@ -202,7 +207,7 @@ class SafeHttp:
                         break
                     chunks.append(chunk)
                 body = b"".join(chunks)
-            net_log.info("%s\t%s\t%d байт\t%.1fs", r.status_code, cur, len(body), time.time() - t0)
+            net_log.info("%s\t%s\t%d байт\t%.1fs", r.status_code, _masked(cur), len(body), time.time() - t0)
             hdrs = {k.lower(): v for k, v in r.headers.items()}
             r.close()
             return cur, hdrs, body, r.status_code

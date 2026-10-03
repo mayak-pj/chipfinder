@@ -16,6 +16,14 @@ from ..models import Lead
 _START = {"engine": "engine.query"}       # остальные семейства: «<семейство>.search»
 
 
+class SourceError(Exception):
+    """Сбой источника из `find()`: `search()` публикует событие `key` (engine.quota, engine.error…) вместо «найдено»."""
+
+    def __init__(self, key: str, detail: str = ""):
+        super().__init__(detail)
+        self.key, self.detail = key, detail
+
+
 @dataclass
 class SourceEntry:
     """Запись источника из sources.json. Поля сверх общих (url, decoder, follow, via…) — в `options`."""
@@ -100,7 +108,11 @@ class SourceAdapter:
             self._emit("engine.no_key", lang, params)
             return []
         self._emit(_START.get(self.family, self.family + ".search"), lang, params)
-        leads = list(self.find(query, http) or [])
+        try:
+            leads = list(self.find(query, http) or [])
+        except SourceError as e:
+            self._emit(e.key, lang, dict(params, detail=e.detail))
+            return []
         for lead in leads:
             lead.source_id = lead.source_id or self.id
             lead.level = lead.level or self.level

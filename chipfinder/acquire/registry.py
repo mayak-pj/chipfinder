@@ -20,6 +20,16 @@ SOURCES_PATH = os.path.join(os.path.dirname(I18N_DIR), "sources.json")
 ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 
+BUILTIN = ("google_api",)       # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
+
+
+def load_builtin() -> None:
+    """Подключает встроенные адаптеры (они регистрируются декоратором `@register`)."""
+    import importlib
+    for name in BUILTIN:
+        importlib.import_module("chipfinder.acquire.sources." + name)
+
+
 def register(cls: Type[SourceAdapter]) -> Type[SourceAdapter]:
     """Декоратор класса адаптера: `@register` — тип берётся из `cls.adapter`."""
     ADAPTERS[cls.adapter] = cls
@@ -32,6 +42,8 @@ class Registry:
         self.data = data or {}
         self.keys = keys or {}            # config.json → acquire.api_keys
         self.bus = bus
+        if adapters is None:
+            load_builtin()
         self._adapters = ADAPTERS if adapters is None else adapters
         self.missing: List[str] = []      # id источников, для которых нет класса адаптера
         self._levels = [dict(lv) for lv in self.data.get("levels", [])]

@@ -1,0 +1,12 @@
+{
+  "kind": "customsearch#search",
+  "searchInformation": {"totalResults": "3"},
+  "items": [
+    {"title": "STM32F103C8 Datasheet", "link": "https://www.st.com/resource/en/datasheet/stm32f103c8.pdf",
+     "mime": "application/pdf", "fileFormat": "PDF/Adobe Acrobat",
+     "snippet": "Medium-density performance line ARM Cortex-M3, 64 or 128 KB Flash"},
+    {"title": "STM32F103C8T6 - alldatasheet", "link": "https://www.alldatasheet.com/datasheet-pdf/pdf/201596/STMICROELECTRONICS/STM32F103C8T6.html?utm_source=x",
+     "snippet": "STM32F103C8T6 datasheet"},
+    {"title": "Datasheet", "link": "https://example.com/files/stm32f103.PDF", "snippet": ""}
+  ]
+}

@@ -18,6 +18,8 @@
   "engine.empty": "{engine}搜索：「{query}」— 未找到",
   "engine.no_key": "{engine}搜索：「{query}」— 没有 API 密钥，已跳过",
   "engine.captcha": "{engine}搜索：「{query}」— 出现验证码，已跳过（{minutes} 分钟后重试）",
+  "engine.quota": "{engine}搜索：「{query}」— API 每日额度已用完，已跳过",
+  "engine.error": "{engine}搜索：「{query}」— 请求失败（{detail}）",
 
   "site.search": "正在搜索 {site}…",
   "site.found": "正在搜索 {site} — 找到 {n} 条匹配",
