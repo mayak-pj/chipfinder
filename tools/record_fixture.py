@@ -45,6 +45,8 @@ def fetch(url: str) -> str:
     from chipfinder.core.netsafe import SafeHttp
     cfg = load_config(APP)
     http = SafeHttp(cfg["network"], os.path.join(APP, "data", "quarantine"), setup_logging(APP, cfg))
+    from urllib.parse import urlsplit
+    http.add_allowed([urlsplit(url).hostname or ""])    # инструмент записи: домен задан явно в командной строке
     return http.get_html(url)[1]
 
 

@@ -19,9 +19,9 @@ _START = {"engine": "engine.query"}       # остальные семейств�
 class SourceError(Exception):
     """Сбой источника из `find()`: `search()` публикует событие `key` (engine.quota, engine.error…) вместо «найдено»."""
 
-    def __init__(self, key: str, detail: str = ""):
+    def __init__(self, key: str, detail: str = "", **params: Any):
         super().__init__(detail)
-        self.key, self.detail = key, detail
+        self.key, self.detail, self.params = key, detail, params       # params — доп. параметры события (minutes…)
 
 
 @dataclass
@@ -111,7 +111,7 @@ class SourceAdapter:
         try:
             leads = list(self.find(query, http) or [])
         except SourceError as e:
-            self._emit(e.key, lang, dict(params, detail=e.detail))
+            self._emit(e.key, lang, dict(params, detail=e.detail, **e.params))
             return []
         for lead in leads:
             lead.source_id = lead.source_id or self.id
