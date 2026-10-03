@@ -153,8 +153,11 @@ class SafeHttp:
 
     # ---------- запросы ----------
     def _request(self, url: str, max_bytes: int, method: str = "GET",
-                 accept: str = "*/*", referer: str = "") -> Tuple[str, Dict[str, str], bytes, int]:
-        """Возвращает (финальный_url, заголовки, тело, статус). Редиректы проверяются вручную."""
+                 accept: str = "*/*", referer: str = "",
+                 truncate: bool = False) -> Tuple[str, Dict[str, str], bytes, int]:
+        """Возвращает (финальный_url, заголовки, тело, статус). Редиректы проверяются вручную.
+
+        truncate=True — тело больше max_bytes обрезается (для проб), иначе NetBlocked."""
         if self.offline:
             raise NetBlocked("Автономный режим: интернет выключен в настройках")
         cur = url
@@ -173,6 +176,10 @@ class SafeHttp:
                 raise
             if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("Location"):
                 nxt = urljoin(cur, r.headers["Location"])
+                nparts = urlsplit(nxt)
+                if nparts.scheme == "http" and not domain_match(host_of(nxt), self.allow_http):
+                    # сайт сам увёл на http (Sogou → /antispider): остаёмся на https, правила не ослабляем
+                    nxt = nparts._replace(scheme="https").geturl()
                 net_log.info("%s\t%s\t-> %s", r.status_code, cur, nxt)
                 r.close()
                 cur = nxt
@@ -180,16 +187,19 @@ class SafeHttp:
             body = b""
             if method != "HEAD":
                 clen = r.headers.get("Content-Length")
-                if clen and clen.isdigit() and int(clen) > max_bytes:
+                if clen and clen.isdigit() and int(clen) > max_bytes and not truncate:
                     r.close()
-                    raise NetBlocked("Файл слишком большой (%s МБ)" % (int(clen) // 1048576))
+                    raise NetBlocked("Файл слишком большой (%s)" % _size_text(int(clen)))
                 chunks = []
                 total = 0
                 for chunk in r.iter_content(65536):
                     total += len(chunk)
                     if total > max_bytes:
-                        r.close()
-                        raise NetBlocked("Превышен лимит размера (%d МБ)" % (max_bytes // 1048576))
+                        if not truncate:
+                            r.close()
+                            raise NetBlocked("Превышен лимит размера (%s)" % _size_text(max_bytes))
+                        chunks.append(chunk[:max(0, len(chunk) - (total - max_bytes))])
+                        break
                     chunks.append(chunk)
                 body = b"".join(chunks)
             net_log.info("%s\t%s\t%d байт\t%.1fs", r.status_code, cur, len(body), time.time() - t0)
@@ -228,10 +238,17 @@ class SafeHttp:
             raise NetBlocked("HTTP %d" % status)
         return json.loads(body.decode("utf-8", errors="replace"))
 
+    def fetch(self, url: str, max_bytes: int = 512 * 1024) -> Dict:
+        """Для диагностики: не бросает на коде ≥ 400, большое тело обрезает.
+        Возвращает {url, status, headers, body, truncated}; сетевые ошибки — исключением."""
+        final, hdrs, body, status = self._request(url, max_bytes + 1, accept="text/html,*/*", truncate=True)
+        return {"url": final, "status": status, "headers": hdrs, "body": body[:max_bytes],
+                "truncated": len(body) > max_bytes}
+
     def probe(self, url: str) -> Tuple[bool, str]:
         """Проверка доступности сайта (для диагностики)."""
         try:
-            final, hdrs, body, status = self._request(url, 512 * 1024, accept="text/html,*/*")
+            final, hdrs, body, status = self._request(url, 512 * 1024, accept="text/html,*/*", truncate=True)
             if status >= 400:
                 return False, "HTTP %d" % status
             return True, "HTTP %d, %d КБ" % (status, len(body) // 1024)
@@ -254,6 +271,10 @@ class SafeHttp:
         with open(path, "wb") as f:
             f.write(body)
         return path, sha, len(body), pdf_danger_scan(body)
+
+
+def _size_text(n: int) -> str:
+    return "%d МБ" % (n // 1048576) if n >= 1048576 else "%d КБ" % (n // 1024)
 
 
 def pdf_danger_scan(data: bytes) -> List[str]:

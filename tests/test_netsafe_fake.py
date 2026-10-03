@@ -57,3 +57,40 @@ def test_record_fixture_from_file(tmp_path):
     assert "LM358" in html and "evil" not in html and "<style" not in html
     meta = json.loads((out / "ti" / "lm358.meta.json").read_text(encoding="utf-8"))
     assert meta["url"].endswith("LM358")
+
+
+def test_probe_big_page_is_truncated_not_failed(tmp_path):
+    fake = FakeHttp().add("https://www.ti.com/big", b"x" * (900 * 1024))
+    ok, info = make(tmp_path, fake).probe("https://www.ti.com/big")
+    assert ok and "HTTP 200" in info
+
+
+def test_limit_message_in_kb_for_small_limits(tmp_path):
+    fake = FakeHttp().add("https://www.ti.com/big", b"x" * (900 * 1024))
+    with pytest.raises(NetBlocked) as e:
+        make(tmp_path, fake)._request("https://www.ti.com/big", 512 * 1024)
+    assert "0 МБ" not in str(e.value) and "512 КБ" in str(e.value)
+
+
+def test_http_redirect_upgraded_to_https(tmp_path):
+    """Sogou уводит на http://…/antispider — переходим по https, а не отказываем."""
+    cfg = {"allowed_domains": ["sogou.com"], "min_interval_sec": 0}
+    import logging
+    fake = (FakeHttp().add_redirect("https://www.sogou.com/web", "http://www.sogou.com/antispider/?m=1")
+            .add("https://www.sogou.com/antispider/?m=1", "captcha"))
+    http = SafeHttp(cfg, str(tmp_path / "q"), logging.getLogger("t"), transport=fake)
+    final, text = http.get_html("https://www.sogou.com/web")
+    assert final.startswith("https://") and text == "captcha"
+    assert all(u.startswith("https://") for _, u in fake.calls)
+
+
+def test_http_redirect_to_foreign_http_still_blocked(tmp_path):
+    fake = FakeHttp().add_redirect("https://www.ti.com/a", "http://evil.example/x")
+    with pytest.raises(NetBlocked):
+        make(tmp_path, fake).get_html("https://www.ti.com/a")
+
+
+def test_fetch_returns_status_and_truncates(tmp_path):
+    fake = FakeHttp().add("https://www.ti.com/p", b"y" * 5000, status=403)
+    r = make(tmp_path, fake).fetch("https://www.ti.com/p", max_bytes=1000)
+    assert r["status"] == 403 and len(r["body"]) == 1000 and r["truncated"]
