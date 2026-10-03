@@ -39,8 +39,8 @@
     {"id": "semiee", "adapter": "direct_url", "name": "半导小芯 Semiee", "level": "china", "lang": "zh", "label": "半导小芯 semiee.com", "url": "https://www.semiee.com/search?searchModel={part}", "domains": ["semiee.com"], "follow": 1, "enabled": true},
     {"id": "baidu", "adapter": "engine_html", "name": "百度", "level": "china", "lang": "zh", "url": "https://www.baidu.com/s?wd={q}", "decoder": "baidu", "domains": ["baidu.com"], "enabled": true},
     {"id": "bing_cn", "adapter": "engine_html", "name": "必应", "level": "china", "lang": "zh", "url": "https://cn.bing.com/search?q={q}&ensearch=0", "decoder": "bing", "domains": ["cn.bing.com"], "enabled": true},
-    {"id": "sogou", "adapter": "engine_html", "name": "搜狗", "level": "china", "lang": "zh", "url": "https://www.sogou.com/web?query={q}", "decoder": "plain", "domains": ["sogou.com"], "enabled": true},
-    {"id": "so360", "adapter": "engine_html", "name": "360搜索", "level": "china", "lang": "zh", "url": "https://www.so.com/s?q={q}", "decoder": "plain", "domains": ["so.com"], "enabled": true},
+    {"id": "sogou", "adapter": "engine_html", "name": "搜狗", "level": "china", "lang": "zh", "url": "https://www.sogou.com/web?query={q}", "decoder": "sogou", "domains": ["sogou.com"], "enabled": true},
+    {"id": "so360", "adapter": "engine_html", "name": "360搜索", "level": "china", "lang": "zh", "url": "https://www.so.com/s?q={q}", "decoder": "so360", "domains": ["so.com"], "enabled": true},
     {"id": "china_queries", "adapter": "engine_queries", "name": "Китайские сайты через поисковики", "level": "china", "lang": "zh", "enabled": true,
      "via": ["baidu", "bing_cn", "sogou", "so360"],
      "queries": [

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Поисковики с HTML-выдачей (ARCHITECTURE §4.2, шаги 2.2–2.6): один адаптер, декодер выдачи — по полю `decoder`.
 
-Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`, `yandex`. Остальные (baidu…) добавляются в `DECODERS`.
+Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`, `yandex`, `baidu`, `sogou`, `so360`.
+Страница декодируется как UTF-8, при ошибке — как GB18030 (китайские поисковики).
 Капча: домен «отдыхает» `REST_MINUTES` минут, в сеть в это время не ходим, событие `engine.captcha`.
 """
 from __future__ import annotations
@@ -196,6 +197,86 @@ def decode_yandex(page: str) -> List[Tuple[str, str, str]]:
     return out
 
 
+def _attr(attrs: str, name: str) -> str:
+    m = re.search(r'\b%s="([^"]*)"' % re.escape(name), attrs, re.I)
+    return m.group(1) if m else ""
+
+
+_BAIDU_BLOCK = re.compile(r'<div\b([^>]*\bclass="[^"]*\bc-container\b[^"]*"[^>]*)>(.*?)(?=<div\b[^>]*\bclass="[^"]*\bc-container\b|$)',
+    re.S | re.I)
+_BAIDU_TITLE = re.compile(r'<h3\b[^>]*>.*?<a\b[^>]*>(.*?)</a>', re.S | re.I)
+_BAIDU_SNIPPET = re.compile(
+    r'<(?:div|span)\b[^>]*\bclass="[^"]*\b(?:c-abstract|content-right_\w+|c-span-last)\b[^"]*"[^>]*>(.*?)</(?:div|span)>', re.S | re.I)
+
+
+def baidu_is_captcha(page: str) -> bool:
+    return "wappass.baidu.com" in page or "百度安全验证" in page or "captcha" in page.lower() and "c-container" not in page
+
+
+def decode_baidu(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи Baidu: настоящий адрес — в атрибуте `mu` блока `c-container`."""
+    out = []
+    for m in _BAIDU_BLOCK.finditer(page):
+        url = _direct(_attr(m.group(1), "mu"))
+        t = _BAIDU_TITLE.search(m.group(2))
+        if not url or not t or (urlsplit(url).hostname or "").endswith("baidu.com"):
+            continue
+        s = _BAIDU_SNIPPET.search(m.group(2))
+        out.append((url, _text(t.group(1)), _text(s.group(1)) if s else ""))
+    return out
+
+
+_SOGOU_BLOCK = re.compile(
+    r'<div\b[^>]*\bclass="[^"]*\b(?:vrwrap|rb)\b[^"]*"[^>]*>(.*?)(?=<div\b[^>]*\bclass="[^"]*\b(?:vrwrap|rb)\b|$)', re.S | re.I)
+_SOGOU_LINK = re.compile(r'<h3\b[^>]*>.*?<a\b([^>]*)>(.*?)</a>', re.S | re.I)
+_SOGOU_SNIPPET = re.compile(
+    r'<(?:p|div)\b[^>]*\bclass="[^"]*\b(?:star-wiki|space-txt|str-text-info|text-layout)\b[^"]*"[^>]*>(.*?)</(?:p|div)>', re.S | re.I)
+
+
+def sogou_is_captcha(page: str) -> bool:
+    return "antispider" in page.lower() or "验证码" in page and "vrwrap" not in page
+
+
+def decode_sogou(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи Sogou: адрес — `data-url` ссылки, иначе прямой `href` (не /link?url=)."""
+    out = []
+    for m in _SOGOU_BLOCK.finditer(page):
+        a = _SOGOU_LINK.search(m.group(1))
+        if not a:
+            continue
+        url = _direct(_attr(a.group(1), "data-url")) or _direct(_attr(a.group(1), "href"))
+        if not url or (urlsplit(url).hostname or "").endswith("sogou.com"):
+            continue
+        s = _SOGOU_SNIPPET.search(m.group(1))
+        out.append((url, _text(a.group(2)), _text(s.group(1)) if s else ""))
+    return out
+
+
+_SO360_BLOCK = re.compile(
+    r'<li\b[^>]*\bclass="[^"]*\bres-list\b[^"]*"[^>]*>(.*?)(?=<li\b[^>]*\bclass="[^"]*\bres-list\b|</ul>|$)', re.S | re.I)
+_SO360_LINK = re.compile(r'<h3\b[^>]*\bclass="[^"]*\bres-title\b[^"]*"[^>]*>.*?<a\b([^>]*)>(.*?)</a>', re.S | re.I)
+_SO360_SNIPPET = re.compile(r'<(?:p|div)\b[^>]*\bclass="[^"]*\bres-(?:desc|rich)\b[^"]*"[^>]*>(.*?)</(?:p|div)>', re.S | re.I)
+
+
+def so360_is_captcha(page: str) -> bool:
+    return ("访问异常" in page or "captcha" in page.lower()) and "res-list" not in page
+
+
+def decode_so360(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи 360 (`li.res-list`): адрес — `data-mdurl`, иначе `href`."""
+    out = []
+    for m in _SO360_BLOCK.finditer(page):
+        a = _SO360_LINK.search(m.group(1))
+        if not a:
+            continue
+        url = _direct(_attr(a.group(1), "data-mdurl")) or _direct(_attr(a.group(1), "href"))
+        if not url or (urlsplit(url).hostname or "").endswith("so.com"):
+            continue
+        s = _SO360_SNIPPET.search(m.group(1))
+        out.append((url, _text(a.group(2)), _text(s.group(1)) if s else ""))
+    return out
+
+
 # decoder -> (разбор страницы, признак капчи)
 DECODERS: Dict[str, Tuple[Callable[[str], List[Tuple[str, str, str]]], Callable[[str], bool]]] = {
     "ddg": (decode_ddg, ddg_is_captcha),
@@ -203,6 +284,9 @@ DECODERS: Dict[str, Tuple[Callable[[str], List[Tuple[str, str, str]]], Callable[
     "mojeek": (decode_mojeek, mojeek_is_captcha),
     "brave": (decode_brave, brave_is_captcha),
     "yandex": (decode_yandex, yandex_is_captcha),
+    "baidu": (decode_baidu, baidu_is_captcha),
+    "sogou": (decode_sogou, sogou_is_captcha),
+    "so360": (decode_so360, so360_is_captcha),
 }
 
 
@@ -233,7 +317,10 @@ class EngineHtml(SourceAdapter):
             detail = str(e) or type(e).__name__
             log.warning("%s: %s", self.id, detail)
             raise SourceError("engine.error", detail)
-        page = fetched["body"].decode("utf-8", errors="replace")
+        try:
+            page = fetched["body"].decode("utf-8")
+        except UnicodeDecodeError:
+            page = fetched["body"].decode("gb18030", errors="replace")
         if is_captcha(page):
             self._rest_until = self._clock() + REST_MINUTES * 60
             raise SourceError("engine.captcha", "captcha", minutes=REST_MINUTES)
