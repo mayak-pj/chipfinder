@@ -32,8 +32,8 @@
     {"id": "google", "adapter": "google_api", "name": "Google", "level": "search", "lang": "en", "url": "https://www.googleapis.com/customsearch/v1?key={key}&cx={cx}&q={q}", "domains": ["googleapis.com"], "needs_key": "google_api", "enabled": true},
     {"id": "duckduckgo", "adapter": "engine_html", "name": "DuckDuckGo", "level": "search", "lang": "en", "url": "https://html.duckduckgo.com/html/?q={q}", "decoder": "ddg", "domains": ["duckduckgo.com"], "enabled": true},
     {"id": "bing", "adapter": "engine_html", "name": "Bing", "level": "search", "lang": "en", "url": "https://www.bing.com/search?q={q}&setlang=en", "decoder": "bing", "domains": ["bing.com"], "enabled": true},
-    {"id": "mojeek", "adapter": "engine_html", "name": "Mojeek", "level": "search", "lang": "en", "url": "https://www.mojeek.com/search?q={q}", "decoder": "plain", "domains": ["mojeek.com"], "enabled": true},
-    {"id": "brave", "adapter": "engine_html", "name": "Brave Search", "level": "search", "lang": "en", "url": "https://search.brave.com/search?q={q}", "decoder": "plain", "domains": ["search.brave.com"], "enabled": true},
+    {"id": "mojeek", "adapter": "engine_html", "name": "Mojeek", "level": "search", "lang": "en", "url": "https://www.mojeek.com/search?q={q}", "decoder": "mojeek", "domains": ["mojeek.com"], "enabled": true},
+    {"id": "brave", "adapter": "engine_html", "name": "Brave Search", "level": "search", "lang": "en", "url": "https://search.brave.com/search?q={q}", "decoder": "brave", "domains": ["search.brave.com"], "enabled": true},
 
     {"id": "lcsc", "adapter": "direct_url", "name": "立创商城 LCSC", "level": "china", "lang": "zh", "label": "立创商城 szlcsc.com", "url": "https://so.szlcsc.com/global.html?k={part}", "domains": ["szlcsc.com", "lcsc.com"], "follow": 1, "enabled": true},
     {"id": "semiee", "adapter": "direct_url", "name": "半导小芯 Semiee", "level": "china", "lang": "zh", "label": "半导小芯 semiee.com", "url": "https://www.semiee.com/search?searchModel={part}", "domains": ["semiee.com"], "follow": 1, "enabled": true},

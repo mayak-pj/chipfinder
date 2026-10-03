@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Поисковики с HTML-выдачей (ARCHITECTURE §4.2, шаги 2.2–2.6): один адаптер, декодер выдачи — по полю `decoder`.
 
-Есть декодеры `ddg` (DuckDuckGo HTML) и `bing` (Bing, Bing CN). Остальные (mojeek, yandex, baidu…) добавляются в `DECODERS`.
+Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`. Остальные (yandex, baidu…) добавляются в `DECODERS`.
 Капча: домен «отдыхает» `REST_MINUTES` минут, в сеть в это время не ходим, событие `engine.captcha`.
 """
 from __future__ import annotations
@@ -114,10 +114,67 @@ def decode_bing(page: str) -> List[Tuple[str, str, str]]:
     return out
 
 
+_MOJEEK_BLOCK = re.compile(r'<li\b[^>]*>(?:(?!</li>).)*?<a\b[^>]*\bclass="[^"]*\btitle\b[^"]*"[^>]*>.*?</li>', re.S | re.I)
+_MOJEEK_LINK = re.compile(r'<a\b([^>]*\bclass="[^"]*\btitle\b[^"]*"[^>]*)>(.*?)</a>', re.S | re.I)
+_MOJEEK_SNIPPET = re.compile(r'<p\b[^>]*\bclass="[^"]*\bs\b[^"]*"[^>]*>(.*?)</p>', re.S | re.I)
+
+
+def _direct(href: str) -> str:
+    href = htmllib.unescape(href or "").strip()
+    return href if urlsplit(href).scheme in ("http", "https") else ""
+
+
+def mojeek_is_captcha(page: str) -> bool:
+    low = page.lower()
+    return "g-recaptcha" in low or ("captcha" in low and "results-standard" not in low)
+
+
+def decode_mojeek(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи Mojeek (`a.title`, `p.s`) в порядке выдачи."""
+    out = []
+    for m in _MOJEEK_BLOCK.finditer(page):
+        block = m.group(0)
+        a = _MOJEEK_LINK.search(block)
+        href = _HREF.search(a.group(1)) if a else None
+        url = _direct(href.group(1)) if href else ""
+        if not url:
+            continue
+        s = _MOJEEK_SNIPPET.search(block)
+        out.append((url, _text(a.group(2)), _text(s.group(1)) if s else ""))
+    return out
+
+
+_BRAVE_START = re.compile(r'<div\b[^>]*\bclass="[^"]*\bsnippet\b[^"]*"[^>]*\bdata-type="web"[^>]*>', re.I)
+_BRAVE_LINK = re.compile(r'<a\b([^>]*)>(.*?)</a>', re.S | re.I)
+_BRAVE_TITLE = re.compile(r'<div\b[^>]*\bclass="[^"]*\btitle\b[^"]*"[^>]*>(.*?)</div>', re.S | re.I)
+_BRAVE_DESC = re.compile(r'<div\b[^>]*\bclass="[^"]*\bsnippet-description\b[^"]*"[^>]*>(.*?)</div>', re.S | re.I)
+
+
+def brave_is_captcha(page: str) -> bool:
+    return "captcha" in page.lower() and not _BRAVE_START.search(page)
+
+
+def decode_brave(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи Brave Search (`div.snippet[data-type=web]`) в порядке выдачи."""
+    out = []
+    for block in _BRAVE_START.split(page)[1:]:
+        a = _BRAVE_LINK.search(block)
+        href = _HREF.search(a.group(1)) if a else None
+        url = _direct(href.group(1)) if href else ""
+        if not url or (urlsplit(url).hostname or "").endswith("brave.com"):
+            continue
+        t = _BRAVE_TITLE.search(a.group(2))
+        d = _BRAVE_DESC.search(block)
+        out.append((url, _text(t.group(1) if t else a.group(2)), _text(d.group(1)) if d else ""))
+    return out
+
+
 # decoder -> (разбор страницы, признак капчи)
 DECODERS: Dict[str, Tuple[Callable[[str], List[Tuple[str, str, str]]], Callable[[str], bool]]] = {
     "ddg": (decode_ddg, ddg_is_captcha),
     "bing": (decode_bing, bing_is_captcha),
+    "mojeek": (decode_mojeek, mojeek_is_captcha),
+    "brave": (decode_brave, brave_is_captcha),
 }
 
 
