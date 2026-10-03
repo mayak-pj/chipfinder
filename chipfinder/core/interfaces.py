@@ -43,7 +43,9 @@ class Enhancer(Module):
 
 
 class OCR(Module):
-    def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None) -> OcrResult:
+    def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None,
+                  original=None) -> OcrResult:
+        """original — исходное фото (BGR) для провайдеров, которым улучшение мешает."""
         raise NotImplementedError
 
     def is_available(self) -> bool:

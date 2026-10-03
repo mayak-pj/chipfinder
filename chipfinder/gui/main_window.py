@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():
                 self.log("⚠ " + getattr(ocr, "error", "OCR недоступен"))
-                QMessageBox.warning(self, "Tesseract не найден", getattr(ocr, "error", "") +
+                QMessageBox.warning(self, "Распознавание недоступно", getattr(ocr, "error", "") +
                                     "\n\nМаркировку можно вводить вручную. Путь к Tesseract задаётся в «Настройках».")
             st = self.ctx.modules["local_db"].stats()
             self.log("База: %(files)d файлов (скачано %(library)d), каталог деталей: %(catalog)d" % st)

@@ -301,10 +301,14 @@ Microsoft YaHei (есть в Win7) / PingFang (Mac), с запасными ва�
 отдельный провайдер. Добавить новый (локальный продукт, другая модель, облако) = одна папка, без правки программы.
 
 ```
-recognition/api.py        OcrProvider: id, название, kind (local|cloud), languages,
-                          is_available() -> (bool, причина), recognize(image_variants, hints) -> OcrResult
-recognition/manager.py    выбор, цепочка при неудаче, объединение результатов, учёт времени
-recognition/providers/tesseract/   встроенный (перенос текущего модуля)
+recognition/api.py        OcrProvider: id, title, kind (local|cloud), languages, wants_original,
+                          is_available() -> (bool, причина), recognize(image_variants, hints, progress) -> OcrResult
+recognition/manager.py    RecognitionManager (роль `ocr`): цепочка при неудаче, учёт времени; провайдер ищется
+                          по id: recognition/providers/<id> или plugins/ocr_<id>/provider.py, класс Provider
+recognition/providers/ppocr/       PP-OCRv4 (rapidocr-onnxruntime 1.3.24 + onnxruntime 1.11.1) — основной; читает
+                          исходное фото без улучшения OpenCV, поворот 0/90/180/270 — по лучшей суммарной
+                          уверенности; модели грузятся при первом распознавании (в фоне, не при запуске окна)
+recognition/providers/tesseract/   запасной: обёртка над modules/ocr_tesseract.py, читает варианты от enhancer
 recognition/providers/cloud_stub/  заглушка облака: is_available() = «не настроено»; удаляется вместе с папкой
 plugins/ocr_<имя>/                 сторонние провайдеры (provider.json + provider.py)
 ```
@@ -315,6 +319,11 @@ plugins/ocr_<имя>/                 сторонние провайдеры (p
 
 **Выбор в интерфейсе** (карточка чипа и настройки): «Авто» / конкретный провайдер / «Сравнить все доступные».
 Кнопка «Распознать заново другим способом» на карточке. В заключении указано, каким способом прочитано.
+
+**Сделано в шаге 0.8:** цепочка `["ppocr", "tesseract"]`; следующий провайдер пробуется, если текущий недоступен,
+упал или ничего не прочитал; параметры PP-OCR — `recognition.providers.ppocr` (`text_score`, `det_box_thresh`,
+`det_unclip_ratio`, `rotations`); `OcrResult.provider / provider_title / seconds`; исходное фото передаётся в
+`OCR.recognize(..., original=)`. Порог уверенности, рамки, выбор в интерфейсе, сравнение — шаги 7.x.
 
 **Цепочка «Авто»** (порядок в `config.json → recognition.chain`, по умолчанию только локальные):
 провайдер считается не справившимся, если уверенность < порога (по умолчанию 60) или ни один кандидат
@@ -332,7 +341,9 @@ plugins/ocr_<имя>/                 сторонние провайдеры (p
 порядок цепочки. Статистика «кто справился» копится и в работе (как §4.10 для поиска).
 
 ## 7. Остальные модули (v1, доработка позже)
-OCR — через провайдеры (§6.1): Tesseract по умолчанию, облако — заглушка до появления доступа.
+OCR — через провайдеры (§6.1): PP-OCRv4 по умолчанию, Tesseract — запасной, облако — заглушка до появления доступа.
+Партномер — `identify_rules`: замены похожих символов, в т.ч. правило «8/0» (перечёркнутый ноль читается как 8;
+вариант с 0 остаётся в кандидатах, только если его знает справочник или каталог).
 Память — справочник `data/part_rules.json` + ключевые слова datasheet. Сверка — `compare_basic`.
 
 ## 8. Безопасность (не ослаблять)
@@ -396,3 +407,6 @@ OCR — через провайдеры (§6.1): Tesseract по умолчани
 | 2026-09-29 | Портативная сборка: Python 3.8.10 embeddable x64 + колёса win_amd64/cp38 (`pip --platform`) + Tesseract UB Mannheim **5.3.0.20221214** (распакован 7-Zip, tessdata eng/osd); имена в zip — cp866; TEMP → `tmp/` программы. Если 5.3.0 не запустится на Win7 — запасной вариант 4.1.0.20190314 | 5.3.0 собран до отказа MSYS2 от Win7 (2023); проводник Win7 не понимает UTF-8 в zip |
 | 2026-10-03 | Проверки на Win7 — «выездами»: проверочный набор внутри портативной сборки, один запуск → один отчёт; вехи ★ не останавливают разработку; проверка сама перебирает запасные варианты | рабочий ПК доступен раз в день, каждый отдельный запуск стоил суток |
 | 2026-10-03 | onnxruntime только 1.11.1, DLL Visual C++ из `msvc-runtime==14.29.30133` рядом с `python.exe` | проверено на том же рабочем ПК в проекте `rename`; 1.12+ и runtime 14.40+ на Win7 не работают |
+| 2026-10-03 | Роль `ocr` — менеджер провайдеров `recognition/`; основной провайдер PP-OCRv4 на исходном фото, Tesseract — запасной. В интерфейс `OCR.recognize` добавлен необязательный `original` (исходное фото), в `OcrResult` — `provider`, `provider_title`, `seconds` | бенч на 120 вырезках: PP-OCR 38 % против 3–5 % у Tesseract; улучшение OpenCV для PP-OCR не нужно |
+| 2026-10-03 | Библиотеки PP-OCR — в `requirements.txt`; пакеты программы ставятся с `--no-deps` (CI и Mac), `requirements-dev.txt` — только инструменты; на Mac `onnxruntime==1.16.3` через маркер | rapidocr тянет `opencv-python` поверх `opencv-python-headless`; колёс onnxruntime 1.11.1 для arm64 нет |
+| 2026-10-03 | Порог теста на `my_test/ocr/` — 36 % (точное совпадение строки с именем файла), а не 69 % | таблица шага 0.7: 38,3 %; «строка содержит ответ» — 50,8 %. Рост качества — шаги 7.x |

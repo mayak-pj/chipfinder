@@ -3,7 +3,7 @@
 
   "modules": {
     "enhancer":   "chipfinder.modules.enhance_opencv:OpenCVEnhancer",
-    "ocr":        "chipfinder.modules.ocr_tesseract:TesseractOCR",
+    "ocr":        "chipfinder.recognition.manager:RecognitionManager",
     "identifier": "chipfinder.modules.identify_rules:RuleIdentifier",
     "local_db":   "chipfinder.modules.localdb_sqlite:SQLiteLocalDB",
     "web_search": "chipfinder.modules.web.search:MultiLevelWebSearch",
@@ -32,6 +32,14 @@
     "comparator": {},
     "memory":     {},
     "report":     {}
+  },
+
+  "recognition": {
+    "chain": ["ppocr", "tesseract"],
+    "providers": {
+      "ppocr": {"text_score": 0.3, "det_box_thresh": 0.3, "det_unclip_ratio": 1.8, "rotations": [0, 90, 180, 270]},
+      "tesseract": {}
+    }
   },
 
   "pipeline": {

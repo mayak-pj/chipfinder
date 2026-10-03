@@ -111,7 +111,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   Файлы: `tools/win7_pack/` (исходники проверок), `tools/build_portable.py`, `ci.yml`. Тесты: запуск набора с
   проверкой-примером и падающей проверкой; состав архива; CI запускает набор встроенным Python на
   `tests/samples/*.png` и проверяет, что партномера прочитаны PP-OCR.
-- [ ] `Opus` **0.8 Провайдер распознавания PP-OCRv4** (минимальная часть 7.1a).
+- [x] `Opus` **0.8 Провайдер распознавания PP-OCRv4** (минимальная часть 7.1a). Порог уточнён по таблице 0.7: 36 % (факт 38,3 %; «строка содержит ответ» — 50,8 %), см. «Решения».
   `recognition/api.py` (OcrProvider по ARCHITECTURE §6.1, флаг `wants_original`), `recognition/manager.py` (цепочка
   из `config → recognition.chain`, по умолчанию `["ppocr", "tesseract"]`; следующий провайдер — если текущий
   недоступен, упал или ничего не прочитал), `recognition/providers/ppocr/` (rapidocr-onnxruntime 1.3.24 + onnxruntime

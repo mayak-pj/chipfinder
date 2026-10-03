@@ -129,7 +129,8 @@ class TesseractOCR(OCR):
                     s -= 15
         return s
 
-    def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None) -> OcrResult:
+    def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None,
+                  original=None) -> OcrResult:
         if not self._ready:
             raise RuntimeError(self._error)
         if not variants:

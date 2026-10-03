@@ -50,10 +50,11 @@ class ChipPipeline:
             if not ocr.is_available():
                 self._say(r, progress, "OCR недоступен: %s. Введите маркировку вручную." % getattr(ocr, "error", ""))
                 return r, variants
-            r.ocr = ocr.recognize(variants, progress=lambda s: progress and progress(s))
+            r.ocr = ocr.recognize(variants, progress=lambda s: progress and progress(s), original=img)
             text = r.ocr.best_text
             alts = [l.text for l in r.ocr.lines if l.confidence >= 40]
-            self._say(r, progress, "Распознано: %s" % text.replace("\n", " / "))
+            how = " (%s)" % r.ocr.provider_title if r.ocr.provider_title else ""
+            self._say(r, progress, "Распознано%s: %s" % (how, text.replace("\n", " / ")))
         self.identify(r, text, alts, progress)
         return r, variants
 

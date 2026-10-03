@@ -17,3 +17,14 @@ beautifulsoup4==4.12.3
 soupsieve==2.5
 pypdf==4.3.1
 typing_extensions==4.12.2
+# Распознавание PP-OCRv4 (шаг 0.8). onnxruntime — только 1.11.1: 1.12+ на Win7 не работает; для Mac arm64 колёс
+# 1.11.1 нет. Ставить с --no-deps: rapidocr тянет opencv-python, а нужен только opencv-python-headless.
+rapidocr-onnxruntime==1.3.24
+onnxruntime==1.11.1; sys_platform != "darwin"
+onnxruntime==1.16.3; sys_platform == "darwin"
+pyclipper==1.3.0.post6
+shapely==2.0.7
+PyYAML==6.0.2
+six==1.16.0
+flatbuffers==23.5.26
+protobuf==4.25.5

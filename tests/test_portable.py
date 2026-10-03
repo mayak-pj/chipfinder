@@ -98,9 +98,9 @@ def test_check_libs_and_msvc_pinned():
     assert libs["rapidocr-onnxruntime"] == "1.3.24"
     assert bp.MSVC_WHEEL == "msvc-runtime==14.29.30133"
     assert set(bp.MSVC_DLLS) == {"msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll"}
-    # библиотеки PP-OCR не попадают в requirements.txt программы
-    reqs = bp.read_lines(os.path.join(bp.ROOT, "requirements.txt"))
-    assert not any(r.lower().startswith(("onnxruntime", "rapidocr", "shapely")) for r in reqs)
+    # с шага 0.8 те же версии — в requirements.txt программы (для Win7 — onnxruntime 1.11.1)
+    reqs = bp.windows_requirements(bp.read_lines(os.path.join(bp.ROOT, "requirements.txt")))
+    assert set(bp.CHECK_LIBS) <= set(reqs)
 
 
 def test_install_check_libs_copies_dlls(tmp_path, monkeypatch):

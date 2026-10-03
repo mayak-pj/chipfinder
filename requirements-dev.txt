@@ -1,5 +1,5 @@
-# Инструменты разработки (не входят в поставку для Win7)
--r requirements.txt
+# Инструменты разработки (не входят в поставку для Win7).
+# Сначала пакеты программы: pip install --no-deps -r requirements.txt
 pytest==8.3.5
 pytest-qt==4.4.0
 ruff

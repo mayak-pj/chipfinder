@@ -83,6 +83,16 @@ def ambiguity_variants(tok: str, limit: int = 32) -> List[str]:
     return out
 
 
+def slashed_zero_variants(tok: str, limit: int = 15) -> List[str]:
+    """Перечёркнутый ноль OCR читает как 8: варианты с заменой 8→0 (по одной и все сразу)."""
+    pos = [i for i, c in enumerate(tok) if c == "8"][:4]
+    out = []
+    for n in range(1, len(pos) + 1):
+        for combo in itertools.combinations(pos, n):
+            out.append("".join("0" if i in combo else c for i, c in enumerate(tok)))
+    return out[:limit]
+
+
 class RuleIdentifier(Identifier):
     name = "rules"
 
@@ -170,6 +180,8 @@ class RuleIdentifier(Identifier):
                 variants[fixed] = why + ", исправлены похожие символы"
             for v in ambiguity_variants(tok):
                 variants.setdefault(v, why + ", замена похожих символов")
+            for v in slashed_zero_variants(tok):
+                variants.setdefault(v, why + ", перечёркнутый ноль (8→0)")
 
             for v, reason in variants.items():
                 s = base if v == tok else base - (0.05 if v == fixed else 0.15)

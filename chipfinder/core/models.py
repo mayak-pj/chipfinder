@@ -30,6 +30,9 @@ class OcrResult:
     lines: List[OcrLine] = field(default_factory=list)
     best_text: str = ""       # итоговая маркировка (несколько строк через \n)
     best_variant: str = ""
+    provider: str = ""        # id провайдера распознавания (recognition/), пусто — введено вручную
+    provider_title: str = ""
+    seconds: float = 0.0
 
 
 @dataclass
