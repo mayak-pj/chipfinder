@@ -20,7 +20,7 @@ SOURCES_PATH = os.path.join(os.path.dirname(I18N_DIR), "sources.json")
 ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 
-BUILTIN = ("google_api", "engine_html")       # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
+BUILTIN = ("google_api", "engine_html", "makers")       # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
 
 
 def load_builtin() -> None:

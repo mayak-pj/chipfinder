@@ -169,7 +169,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 - [x] `Sonnet` **2.4 Mojeek и Brave.**
 - [x] `Sonnet` **2.5 Яндекс** (капча → домен «отдыхает»).
 - [x] `Sonnet` **2.6 Baidu** (атрибут `mu`, GB18030), **Sogou**, **360**.
-- [ ] `Sonnet` **2.7 Сайты производителей** (`sources/makers/`): прямые шаблоны URL (TI, Microchip, ST, WCH, Espressif,
+- [x] `Sonnet` **2.7 Сайты производителей** (`sources/makers/`): прямые шаблоны URL (TI, Microchip, ST, WCH, Espressif,
   GigaDevice, Winbond…) + поиск `site:`; проверка первых байт. Тест: шаблоны + fake_http.
 - [ ] `Sonnet` **2.8 AllDatasheet** (поиск → страница детали → PDF, через crawl).
 - [ ] `Sonnet` **2.9 Datasheet Archive, FindChips, datasheetspdf, datasheet4u.**
