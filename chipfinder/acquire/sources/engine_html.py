@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Поисковики с HTML-выдачей (ARCHITECTURE §4.2, шаги 2.2–2.6): один адаптер, декодер выдачи — по полю `decoder`.
 
-Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`. Остальные (yandex, baidu…) добавляются в `DECODERS`.
+Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`, `yandex`. Остальные (baidu…) добавляются в `DECODERS`.
 Капча: домен «отдыхает» `REST_MINUTES` минут, в сеть в это время не ходим, событие `engine.captcha`.
 """
 from __future__ import annotations
@@ -169,12 +169,40 @@ def decode_brave(page: str) -> List[Tuple[str, str, str]]:
     return out
 
 
+_YANDEX_BLOCK = re.compile(
+    r'<li\b[^>]*\bclass="[^"]*\bserp-item\b[^"]*"[^>]*>(.*?)(?=<li\b[^>]*\bclass="[^"]*\bserp-item\b|</ul>|$)', re.S | re.I)
+_YANDEX_LINK = re.compile(r'<a\b([^>]*\bclass="[^"]*\bOrganicTitle-Link\b[^"]*"[^>]*)>(.*?)</a>', re.S | re.I)
+_YANDEX_SNIPPET = re.compile(r'<div\b[^>]*\bclass="[^"]*\b(?:OrganicText|ExtendedText)\b[^"]*"[^>]*>(.*?)</div>', re.S | re.I)
+
+
+def yandex_is_captcha(page: str) -> bool:
+    low = page.lower()
+    return "checkcaptcha" in low or "showcaptcha" in low or "smartcaptcha" in low
+
+
+def decode_yandex(page: str) -> List[Tuple[str, str, str]]:
+    """[(url, заголовок, фрагмент)] из выдачи Яндекса (`li.serp-item`, `a.OrganicTitle-Link`); свои сервисы отброшены."""
+    out = []
+    for m in _YANDEX_BLOCK.finditer(page):
+        block = m.group(1)
+        a = _YANDEX_LINK.search(block)
+        href = _HREF.search(a.group(1)) if a else None
+        url = _direct(href.group(1)) if href else ""
+        host = urlsplit(url).hostname or ""
+        if not url or host.endswith("yandex.ru") or host.endswith("yandex.com"):
+            continue
+        s = _YANDEX_SNIPPET.search(block)
+        out.append((url, _text(a.group(2)), _text(s.group(1)) if s else ""))
+    return out
+
+
 # decoder -> (разбор страницы, признак капчи)
 DECODERS: Dict[str, Tuple[Callable[[str], List[Tuple[str, str, str]]], Callable[[str], bool]]] = {
     "ddg": (decode_ddg, ddg_is_captcha),
     "bing": (decode_bing, bing_is_captcha),
     "mojeek": (decode_mojeek, mojeek_is_captcha),
     "brave": (decode_brave, brave_is_captcha),
+    "yandex": (decode_yandex, yandex_is_captcha),
 }
 
 

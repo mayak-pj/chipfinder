@@ -50,7 +50,7 @@
        "{part} site:eeworld.com.cn OR site:51hei.com OR site:amobbs.com OR site:icpdf.com"
      ]},
 
-    {"id": "yandex", "adapter": "engine_html", "name": "Яндекс", "level": "russian", "lang": "ru", "url": "https://yandex.ru/search/?text={q}", "decoder": "plain", "domains": ["yandex.ru"], "enabled": true},
+    {"id": "yandex", "adapter": "engine_html", "name": "Яндекс", "level": "russian", "lang": "ru", "url": "https://yandex.ru/search/?text={q}", "decoder": "yandex", "domains": ["yandex.ru"], "enabled": true},
 
     {"id": "forum_queries", "adapter": "engine_queries", "name": "Форумы через поисковики", "level": "forum", "lang": "", "enabled": true,
      "via": ["duckduckgo", "bing", "yandex"],
