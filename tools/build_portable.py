@@ -34,6 +34,14 @@ TESS_SHA256 = "175a326853f87474132c284072a821dd819c63b707b01879b309f80bd6c0ab1e"
 SELFTEST_REQS = ["pytest==8.3.5", "pluggy==1.5.0", "iniconfig==2.0.0", "exceptiongroup==1.2.2",
                  "tomli==2.0.2", "colorama==0.4.6"]
 
+# библиотеки PP-OCR для проверочного набора: лежат отдельно от программы (checks/libs/), requirements.txt не трогаем.
+# onnxruntime — только 1.11.1 (1.12+ на Win7 не работает); flatbuffers и protobuf нужны самому onnxruntime
+CHECK_LIBS = ["rapidocr-onnxruntime==1.3.24", "onnxruntime==1.11.1", "pyclipper==1.3.0.post6", "shapely==2.0.7",
+              "PyYAML==6.0.2", "six==1.16.0", "flatbuffers==23.5.26", "protobuf==4.25.5"]
+# DLL Visual C++ рядом с python.exe — из колеса msvc-runtime (14.40+ Win7 не поддерживает)
+MSVC_WHEEL = "msvc-runtime==14.29.30133"
+MSVC_DLLS = ("msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll")
+
 # окружение цели для маркеров requirements.txt
 WIN_ENV = {"sys_platform": "win32", "platform_system": "Windows", "os_name": "nt", "platform_machine": "AMD64",
            "python_version": "3.8", "python_full_version": "3.8.10", "implementation_name": "cpython",
@@ -207,6 +215,22 @@ def extract_tesseract(installer, dest):
             raise SystemExit("В распакованном Tesseract нет " + need)
 
 
+def install_check_libs(app):
+    """checks/libs/ (PP-OCR) и DLL Visual C++ рядом с python.exe. Возвращает список DLL, которых не нашлось."""
+    install_packages(os.path.join(app, "checks", "libs"), CHECK_LIBS)
+    tmp = os.path.join(app, "tmp_msvc")
+    install_packages(tmp, [MSVC_WHEEL])
+    found = {}
+    for d, _dirs, files in os.walk(tmp):
+        for fn in files:
+            if fn.lower() in MSVC_DLLS:
+                found.setdefault(fn.lower(), os.path.join(d, fn))
+    for fn, src in found.items():
+        shutil.copy2(src, os.path.join(app, "python", fn))
+    shutil.rmtree(tmp)
+    return [d for d in MSVC_DLLS if d not in found]
+
+
 def git_commit():
     try:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT).decode().strip()
@@ -214,7 +238,7 @@ def git_commit():
         return "?"
 
 
-def build(out_dir, with_tesseract=True, with_zip=True):
+def build(out_dir, with_tesseract=True, with_zip=True, with_checks_libs=True):
     cache = os.path.join(out_dir, "cache")
     app = os.path.join(out_dir, NAME)
     if os.path.isdir(app):
@@ -231,6 +255,10 @@ def build(out_dir, with_tesseract=True, with_zip=True):
 
     if with_tesseract:
         extract_tesseract(fetch(TESS_URL, TESS_SHA256, cache), os.path.join(app, "tesseract"))
+
+    missing_dlls = install_check_libs(app) if with_checks_libs else []
+    if missing_dlls:
+        print("ВНИМАНИЕ: в колесе %s нет %s" % (MSVC_WHEEL, ", ".join(missing_dlls)))
 
     for src, rel in program_files() + check_files():
         dst = os.path.join(app, *rel.split("/"))
@@ -255,9 +283,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", default=os.path.join(ROOT, "dist"))
     ap.add_argument("--no-tesseract", action="store_true", help="без Tesseract (проверка состава на Mac)")
+    ap.add_argument("--no-checks-libs", action="store_true", help="без checks/libs (PP-OCR) и DLL Visual C++")
     ap.add_argument("--no-zip", action="store_true", help="только папка, без архива")
     a = ap.parse_args()
-    build(os.path.abspath(a.out), not a.no_tesseract, not a.no_zip)
+    build(os.path.abspath(a.out), not a.no_tesseract, not a.no_zip, not a.no_checks_libs)
     return 0
 
 

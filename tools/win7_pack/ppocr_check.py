@@ -7,6 +7,7 @@
 import argparse
 import csv
 import datetime
+import json
 import os
 import re
 import sys
@@ -222,28 +223,48 @@ def _tesseract_engine():
     return {"tesseract_psm6": make(6), "tesseract_psm11": make(11)}
 
 
+def libs_report():
+    """Диагностика окружения PP-OCR: что лежит в checks/libs, есть ли DLL Visual C++ рядом с python.exe."""
+    libs = os.path.join(HERE, "libs")
+    pydir = os.path.dirname(os.path.abspath(sys.executable))
+    rep = {"libs_dir": os.path.isdir(libs),
+           "libs": sorted(n for n in os.listdir(libs) if n.endswith(".dist-info")) if os.path.isdir(libs) else [],
+           "dll": {d: os.path.isfile(os.path.join(pydir, d)) for d in ("msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll")}}
+    _libs()
+    try:
+        import onnxruntime
+        rep["onnxruntime"] = onnxruntime.__version__
+        rep["providers"] = onnxruntime.get_available_providers()
+    except BaseException:  # noqa — полный текст ошибки загрузки — в отчёт
+        rep["onnxruntime_error"] = traceback.format_exc()
+    return rep
+
+
 def run(ctx):
     """Проверка набора: PP-OCR на фото из `фото/`."""
+    diag = libs_report()
+    with open(os.path.join(ctx.work_dir, "ppocr_libs.json"), "w", encoding="utf-8") as f:
+        json.dump(diag, f, ensure_ascii=False, indent=2)
     photos = ctx.photos_dir
     if not os.path.isdir(photos) or not collect(photos):
         os.makedirs(photos, exist_ok=True)
         ctx.todo("Положите в папку «фото» рядом с программой несколько снимков чипов (лучше вырезки с одной "
                  "строкой маркировки, файл назван этой строкой) и запустите проверку ещё раз.")
-        return {"status": "skip", "note": "папка «фото» пуста"}
+        return {"status": "skip", "note": "папка «фото» пуста", "libs": diag}
     try:
         engines = make_engines()
     except BaseException:  # noqa — полный текст ошибки загрузки — в отчёт
         tb = traceback.format_exc()
         with open(os.path.join(ctx.work_dir, "ppocr_load_error.txt"), "w", encoding="utf-8") as f:
             f.write(tb)
-        return {"status": "fail", "error": "PP-OCR не загрузился", "traceback": tb}
+        return {"status": "fail", "error": "PP-OCR не загрузился", "traceback": tb, "libs": diag}
     items = collect(photos)
     stats, rows = evaluate(items, engines)
     md = report_md(stats, rows, "фото/ (%d)" % len(items))
     with open(os.path.join(ctx.work_dir, "ocr_bench.md"), "w", encoding="utf-8") as f:
         f.write(md)
     main = stats.get("ppocr_main", {})
-    return {"status": "ok" if main.get("errors", 1) == 0 else "fail", "photos": len(items), "stats": stats,
+    return {"status": "ok" if main.get("errors", 1) == 0 else "fail", "photos": len(items), "stats": stats, "libs": diag,
             "note": "main auto %s%%" % _pct(main.get("auto", 0), main.get("total", 0))}
 
 

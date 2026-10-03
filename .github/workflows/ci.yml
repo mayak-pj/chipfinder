@@ -99,6 +99,11 @@ jobs:
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"
           dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
+      - name: PP-OCR из проверочного набора читает образцы (встроенный Python, onnxruntime 1.11.1)
+        shell: cmd
+        run: |
+          set "PATH=C:\Windows\system32;C:\Windows"
+          dist\ChipFinder\python\python.exe tools\ci_ppocr.py dist\ChipFinder
       - name: Окно открывается из папки с русским именем и пробелом (настоящий оконный модуль Qt)
         shell: bash
         timeout-minutes: 3     # при ошибке Qt показывает окно и ждёт «OK» — шаг зависает

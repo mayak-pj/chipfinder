@@ -86,3 +86,35 @@ def test_run_creates_photos_dir_and_asks_user(tmp_path):
     res = pc.run(c)
     assert os.path.isdir(c.photos_dir)
     assert res["status"] == "skip" and c.todo_items
+
+
+def test_libs_report_has_dll_and_libs_keys():
+    rep = pc.libs_report()
+    assert set(rep["dll"]) == {"msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll"}
+    assert "libs" in rep and "libs_dir" in rep
+
+
+def test_run_reports_load_error_in_full(tmp_path, monkeypatch):
+    photos = tmp_path / "фото"
+    photos.mkdir()
+    _png(photos / "ABC123.png")
+
+    class Ctx(object):
+        app_dir = str(tmp_path)
+        photos_dir = str(photos)
+        work_dir = str(tmp_path / "w")
+        todo_items = []
+
+        def todo(self, t):
+            self.todo_items.append(t)
+
+    os.makedirs(Ctx.work_dir)
+
+    def boom(*a, **k):
+        raise ImportError("DLL load failed: тест")
+
+    monkeypatch.setattr(pc, "make_engines", boom)
+    res = pc.run(Ctx())
+    assert res["status"] == "fail" and "DLL load failed" in res["traceback"] and "libs" in res
+    assert os.path.isfile(os.path.join(Ctx.work_dir, "ppocr_load_error.txt"))
+    assert os.path.isfile(os.path.join(Ctx.work_dir, "ppocr_libs.json"))
