@@ -1,0 +1,71 @@
+{
+  "_readme": "搜索进度消息，中文。{name} — 参数值；数量后直接写量词（个/条/份），没有复数；{size:size} — 文件大小。en.json、zh.json、ru.json 三个文件的键和 {参数名} 必须一致。",
+  "_units": "B KB MB GB",
+  "_decimal": ".",
+
+  "local.search": "正在搜索本地资料库…",
+  "local.found": "本地资料库：找到 {n} 份文档",
+  "local.empty": "本地资料库：未找到",
+  "cache.hit": "{site}：使用缓存结果（{n} 条链接）",
+  "cache.negative": "{site}：{days} 天前在此未找到，已跳过",
+
+  "maker.search": "正在搜索厂商网站 {site}…",
+  "maker.found": "厂商网站 {site} — 找到 {n} 份文档",
+  "maker.empty": "厂商网站 {site} — 未找到",
+
+  "engine.query": "{engine}搜索：「{query}」…",
+  "engine.found": "{engine}搜索：「{query}」— 找到 {n} 条结果",
+  "engine.empty": "{engine}搜索：「{query}」— 未找到",
+  "engine.no_key": "{engine}搜索：「{query}」— 没有 API 密钥，已跳过",
+  "engine.captcha": "{engine}搜索：「{query}」— 出现验证码，已跳过（{minutes} 分钟后重试）",
+
+  "site.search": "正在搜索 {site}…",
+  "site.found": "正在搜索 {site} — 找到 {n} 条匹配",
+  "site.found_pdf": "正在搜索 {site} — 找到 {n} 个型号，{pdfs} 份 PDF",
+  "site.empty": "正在搜索 {site} — 未找到",
+
+  "market.search": "正在搜索电商平台：{site}…",
+  "market.found": "正在搜索电商平台：{site} — 找到 {n} 件商品，{pdfs} 条 PDF 链接",
+  "market.empty": "正在搜索电商平台：{site} — 未找到",
+
+  "crawl.found": "{site} 页面：找到 {n} 条 PDF 链接",
+  "crawl.empty": "{site} 页面：没有 PDF 链接",
+
+  "fetch.start": "正在从 {site} 下载 {file}…",
+  "fetch.progress": "正在下载 {file} — {size:size}，{percent}%",
+  "fetch.done": "已下载 {file} — {size:size}",
+  "fetch.failed": "从 {site} 下载 {file} 失败",
+
+  "quarantine.placed": "文件已放入隔离区",
+
+  "validate.ok": "文件检查：格式 ✔ 安全 ✔ {pages} 页，含文本",
+  "validate.scan": "文件检查：格式 ✔ 安全 ✔ {pages} 页，扫描件，无文本",
+  "validate.not_pdf": "文件检查：不是 PDF，已拒绝",
+  "validate.encrypted": "文件检查：PDF 已加密，已拒绝",
+  "validate.active_content": "文件检查：含有活动内容（{what}），已拒绝",
+  "validate.too_big": "文件检查：文件过大（{size:size}），已拒绝",
+
+  "verify.result": "内容核对：型号 {part_ok} 封装 {package} {package_ok} 厂商 {maker} {maker_ok} — {score} 分",
+  "verify.rejected": "内容核对：不是 {part} 的文档 — {score} 分",
+
+  "confirm.search": "确认：正在查找独立来源的副本…",
+  "confirm.identical": "确认：{site} 上有相同的副本 ✔",
+  "confirm.none": "确认：未找到独立来源的副本",
+
+  "access.site_protected": "{site}：网站有防程序保护，可以手动下载",
+  "access.network_blocked": "{site}：当前网络无法访问",
+  "access.not_whitelisted": "{site}：不在程序的允许列表中，已跳过",
+  "access.transient": "{site}：暂时故障，稍后重试",
+  "access.unknown": "{site}：没有响应，原因不明",
+
+  "search.cancelled": "用户已取消搜索",
+  "search.budget": "搜索已停止：{seconds} 秒的时间限额已用完",
+
+  "result.confirmed": "结果：已确认 — 已保存到资料库（{queries} 次查询，{seconds} 秒）",
+  "result.probable": "结果：很可能正确 — 已保存，需要查看（{queries} 次查询，{seconds} 秒）",
+  "result.needs_user": "结果：需要您决定 — {n} 个候选（{queries} 次查询，{seconds} 秒）",
+  "result.rejected": "结果：已拒绝 — 找到的文档不符合（{queries} 次查询，{seconds} 秒）",
+  "result.not_found": "结果：未找到 — 已检查 {sources} 个来源（{queries} 次查询，{seconds} 秒）",
+
+  "error.internal": "程序在 {stage} 阶段出错：{error}"
+}

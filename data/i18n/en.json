@@ -1,0 +1,71 @@
+{
+  "_readme": "Search progress messages, English. {name} - value; {n:link|links} - number with the right word form; {size:size} - file size. Keep the same keys and {names} in en.json, zh.json and ru.json.",
+  "_units": "B KB MB GB",
+  "_decimal": ".",
+
+  "local.search": "Searching the local library…",
+  "local.found": "Local library: {n:document|documents} found",
+  "local.empty": "Local library: nothing found",
+  "cache.hit": "{site}: cached results used ({n:link|links})",
+  "cache.negative": "{site}: nothing was found here {days:day|days} ago, skipped",
+
+  "maker.search": "Searching manufacturer site {site}…",
+  "maker.found": "Manufacturer site {site} — {n:document|documents} found",
+  "maker.empty": "Manufacturer site {site} — nothing found",
+
+  "engine.query": "{engine} query: \"{query}\"…",
+  "engine.found": "{engine} query: \"{query}\" — {n:link|links} found",
+  "engine.empty": "{engine} query: \"{query}\" — nothing found",
+  "engine.no_key": "{engine} query: \"{query}\" — no API key, skipped",
+  "engine.captcha": "{engine} query: \"{query}\" — captcha, skipped (retry in {minutes} min)",
+
+  "site.search": "Searching {site}…",
+  "site.found": "Searching {site} — {n:match|matches} found",
+  "site.found_pdf": "Searching {site} — {n:part|parts} found, {pdfs} PDF",
+  "site.empty": "Searching {site} — nothing found",
+
+  "market.search": "Searching marketplaces: {site}…",
+  "market.found": "Searching marketplaces: {site} — {n:item|items} found, {pdfs:PDF link|PDF links}",
+  "market.empty": "Searching marketplaces: {site} — nothing found",
+
+  "crawl.found": "Page on {site}: {n:PDF link|PDF links} found",
+  "crawl.empty": "Page on {site}: no PDF links",
+
+  "fetch.start": "Downloading {file} from {site}…",
+  "fetch.progress": "Downloading {file} — {size:size}, {percent}%",
+  "fetch.done": "Downloaded {file} — {size:size}",
+  "fetch.failed": "Download of {file} from {site} failed",
+
+  "quarantine.placed": "File placed in quarantine",
+
+  "validate.ok": "File check: format ✔ safe ✔ {pages:page|pages}, has text",
+  "validate.scan": "File check: format ✔ safe ✔ {pages:page|pages}, scan without text",
+  "validate.not_pdf": "File check: not a PDF, rejected",
+  "validate.encrypted": "File check: the PDF is encrypted, rejected",
+  "validate.active_content": "File check: active content ({what}), rejected",
+  "validate.too_big": "File check: too large ({size:size}), rejected",
+
+  "verify.result": "Content check: part {part_ok} package {package} {package_ok} maker {maker} {maker_ok} — {score:point|points}",
+  "verify.rejected": "Content check: not a document for {part} — {score:point|points}",
+
+  "confirm.search": "Confirmation: looking for an independent copy…",
+  "confirm.identical": "Confirmation: identical copy on {site} ✔",
+  "confirm.none": "Confirmation: no independent copy found",
+
+  "access.site_protected": "{site}: the site is protected from programs, can be downloaded by hand",
+  "access.network_blocked": "{site}: no access from this network",
+  "access.not_whitelisted": "{site}: not in the program's allowed list, skipped",
+  "access.transient": "{site}: temporary failure, will retry later",
+  "access.unknown": "{site}: no answer, the cause is unclear",
+
+  "search.cancelled": "Search cancelled by the user",
+  "search.budget": "Search stopped: the time limit of {seconds} s is used up",
+
+  "result.confirmed": "Result: CONFIRMED — saved to the library ({queries:query|queries}, {seconds} s)",
+  "result.probable": "Result: PROBABLE — saved, needs a look ({queries:query|queries}, {seconds} s)",
+  "result.needs_user": "Result: YOUR DECISION NEEDED — {n:candidate|candidates} ({queries:query|queries}, {seconds} s)",
+  "result.rejected": "Result: REJECTED — the documents found do not fit ({queries:query|queries}, {seconds} s)",
+  "result.not_found": "Result: NOT FOUND — {sources:source|sources} checked ({queries:query|queries}, {seconds} s)",
+
+  "error.internal": "Program error at stage {stage}: {error}"
+}
