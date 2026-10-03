@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Шаг CI: проверка `ppocr` из проверочного набора, запущенная встроенным Python собранной папки.
+"""Шаг CI: проверки `ppocr_check` и `program_ocr` набора, запущенные встроенным Python собранной папки.
 
     dist\\ChipFinder\\python\\python.exe tools/ci_ppocr.py dist\\ChipFinder
 
-Кладёт в `фото/` образцы tests/samples (ответы — в ответы.csv), запускает checks/run_checks.py --only ppocr_check
-и требует: PP-OCR загрузился и прочитал не меньше MIN_READ образцов.
+Кладёт в `фото/` образцы tests/samples (ответы — в ответы.csv), запускает checks/run_checks.py --only ppocr_check program_ocr
+и требует: PP-OCR загрузился и прочитал не меньше MIN_READ образцов, а программа (менеджер распознавания)
+прочитала не меньше MIN_READ образцов провайдером ppocr — с библиотеками из site-packages, не из checks/.
 """
 import csv
 import json
@@ -29,20 +30,25 @@ def main(app):
         w = csv.writer(f, delimiter=";")
         w.writerow(["файл", "ответ"])
         w.writerows(sorted(ANSWERS.items()))
-    rc = subprocess.call([sys.executable, os.path.join(app, "checks", "run_checks.py"), "--app-dir", app, "--only", "ppocr_check"])
+    rc = subprocess.call([sys.executable, os.path.join(app, "checks", "run_checks.py"), "--app-dir", app,
+                          "--only", "ppocr_check", "program_ocr"])
     with open(os.path.join(app, "tmp", "report", "results.json"), encoding="utf-8") as f:
-        res = json.load(f)[0]
-    print(json.dumps({k: v for k, v in res.items() if k != "traceback"}, ensure_ascii=False, indent=2))
-    if res.get("traceback"):
-        print(res["traceback"])
-    if rc != 0 or res.get("status") != "ok":
-        print("ppocr: проверка не пройдена")
+        results = {r["name"]: r for r in json.load(f)}
+    for res in results.values():
+        print(json.dumps({k: v for k, v in res.items() if k != "traceback"}, ensure_ascii=False, indent=2))
+        if res.get("traceback"):
+            print(res["traceback"])
+    bad = [n for n in ("ppocr_check", "program_ocr") if results.get(n, {}).get("status") != "ok"]
+    if rc != 0 or bad:
+        print("ppocr: проверка не пройдена: " + ", ".join(bad))
         return 1
-    auto = res["stats"]["ppocr_main"]["auto"]
-    if auto < MIN_READ:
-        print("ppocr: прочитано %d из %d, нужно не меньше %d" % (auto, len(ANSWERS), MIN_READ))
+    auto = results["ppocr_check"]["stats"]["ppocr_main"]["auto"]
+    prog = results["program_ocr"]
+    print("ppocr_check: прочитано %d из %d; program_ocr: %d из %d (%s)"
+          % (auto, len(ANSWERS), prog["read"], len(ANSWERS), ", ".join(prog["providers"])))
+    if auto < MIN_READ or prog["read"] < MIN_READ or "ppocr" not in prog["providers"]:
+        print("ppocr: нужно не меньше %d прочитанных образцов, и программа должна читать провайдером ppocr" % MIN_READ)
         return 1
-    print("ppocr: прочитано %d из %d" % (auto, len(ANSWERS)))
     return 0
 
 

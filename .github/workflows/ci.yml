@@ -101,7 +101,7 @@ jobs:
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"
           dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
-      - name: PP-OCR из проверочного набора читает образцы (встроенный Python, onnxruntime 1.11.1)
+      - name: PP-OCR читает образцы - проверки ppocr_check и program_ocr (встроенный Python, onnxruntime 1.11.1)
         shell: cmd
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"

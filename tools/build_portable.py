@@ -3,7 +3,7 @@
 
     python tools/build_portable.py [--out dist] [--no-tesseract] [--no-zip]
 
-Состав папки ChipFinder/: python/ (embeddable 3.8.10 + пакеты в Lib/site-packages), tesseract/ (распакованный
+Состав папки ChipFinder/: python/ (embeddable 3.8.10 + пакеты в Lib/site-packages, в т.ч. PP-OCR), tesseract/ (распакованный
 установщик UB Mannheim, tessdata/eng), программа, ChipFinder.bat, Самопроверка.bat. Пакеты — колёса win_amd64
 для cp38 (pip --platform), поэтому сборку можно запустить и на Mac, чтобы проверить состав. Tesseract
 распаковывается через 7-Zip (на CI есть; на Mac без 7-Zip — ключ --no-tesseract).
@@ -34,10 +34,6 @@ TESS_SHA256 = "175a326853f87474132c284072a821dd819c63b707b01879b309f80bd6c0ab1e"
 SELFTEST_REQS = ["pytest==8.3.5", "pluggy==1.5.0", "iniconfig==2.0.0", "exceptiongroup==1.2.2",
                  "tomli==2.0.2", "colorama==0.4.6"]
 
-# библиотеки PP-OCR для проверочного набора: лежат отдельно от программы (checks/libs/), requirements.txt не трогаем.
-# onnxruntime — только 1.11.1 (1.12+ на Win7 не работает); flatbuffers и protobuf нужны самому onnxruntime
-CHECK_LIBS = ["rapidocr-onnxruntime==1.3.24", "onnxruntime==1.11.1", "pyclipper==1.3.0.post6", "shapely==2.0.7",
-              "PyYAML==6.0.2", "six==1.16.0", "flatbuffers==23.5.26", "protobuf==4.25.5"]
 # DLL Visual C++ рядом с python.exe — из колеса msvc-runtime (14.40+ Win7 не поддерживает)
 MSVC_WHEEL = "msvc-runtime==14.29.30133"
 MSVC_DLLS = ("msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll")
@@ -215,9 +211,8 @@ def extract_tesseract(installer, dest):
             raise SystemExit("В распакованном Tesseract нет " + need)
 
 
-def install_check_libs(app):
-    """checks/libs/ (PP-OCR) и DLL Visual C++ рядом с python.exe. Возвращает список DLL, которых не нашлось."""
-    install_packages(os.path.join(app, "checks", "libs"), CHECK_LIBS)
+def install_msvc_dlls(app):
+    """DLL Visual C++ рядом с python.exe (нужны onnxruntime). Возвращает список DLL, которых не нашлось."""
     tmp = os.path.join(app, "tmp_msvc")
     install_packages(tmp, [MSVC_WHEEL])
     found = {}
@@ -238,7 +233,7 @@ def git_commit():
         return "?"
 
 
-def build(out_dir, with_tesseract=True, with_zip=True, with_checks_libs=True):
+def build(out_dir, with_tesseract=True, with_zip=True, with_msvc=True):
     cache = os.path.join(out_dir, "cache")
     app = os.path.join(out_dir, NAME)
     if os.path.isdir(app):
@@ -256,7 +251,7 @@ def build(out_dir, with_tesseract=True, with_zip=True, with_checks_libs=True):
     if with_tesseract:
         extract_tesseract(fetch(TESS_URL, TESS_SHA256, cache), os.path.join(app, "tesseract"))
 
-    missing_dlls = install_check_libs(app) if with_checks_libs else []
+    missing_dlls = install_msvc_dlls(app) if with_msvc else []
     if missing_dlls:
         print("ВНИМАНИЕ: в колесе %s нет %s" % (MSVC_WHEEL, ", ".join(missing_dlls)))
 
@@ -283,10 +278,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", default=os.path.join(ROOT, "dist"))
     ap.add_argument("--no-tesseract", action="store_true", help="без Tesseract (проверка состава на Mac)")
-    ap.add_argument("--no-checks-libs", action="store_true", help="без checks/libs (PP-OCR) и DLL Visual C++")
+    ap.add_argument("--no-msvc", action="store_true", help="без DLL Visual C++ рядом с python.exe")
     ap.add_argument("--no-zip", action="store_true", help="только папка, без архива")
     a = ap.parse_args()
-    build(os.path.abspath(a.out), not a.no_tesseract, not a.no_zip, not a.no_checks_libs)
+    build(os.path.abspath(a.out), not a.no_tesseract, not a.no_zip, not a.no_msvc)
     return 0
 
 

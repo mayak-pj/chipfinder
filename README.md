@@ -23,7 +23,7 @@
 4. Запуск — `ChipFinder.bat`. Внутри уже есть Python 3.8.10, пакеты и Tesseract (`tesseract\`);
    программа пишет только в свою папку. Состав сборки — `build_info.txt`.
 
-Сборка: `python tools/build_portable.py` (на Mac без 7-Zip — с ключом `--no-tesseract`, для проверки состава).
+Сборка: `python tools/build_portable.py` (на Mac без 7-Zip — с ключом `--no-tesseract`, для проверки состава). PP-OCR (rapidocr-onnxruntime с моделями, onnxruntime 1.11.1) ставится в `python/Lib/site-packages` из `requirements.txt`, DLL Visual C++ кладутся рядом с `python.exe`.
 
 ### Установка с Python (старый способ)
 

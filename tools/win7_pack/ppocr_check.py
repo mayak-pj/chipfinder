@@ -27,13 +27,6 @@ PARAM_SETS = [
 ]
 
 
-def _libs():
-    """Библиотеки PP-OCR в сборке лежат отдельно: checks/libs/."""
-    libs = os.path.join(HERE, "libs")
-    if os.path.isdir(libs) and libs not in sys.path:
-        sys.path.insert(0, libs)
-
-
 def norm(s):
     """Без пробелов, знаков и регистра; русские буквы отбрасываются."""
     return re.sub(r"[^A-Z0-9]", "", s.upper())
@@ -163,7 +156,6 @@ def report_md(stats, rows, source):
 
 def make_engines(with_tesseract=True):
     """Вариант на каждый набор параметров PP-OCR + (для сравнения) Tesseract."""
-    _libs()
     from rapidocr_onnxruntime import RapidOCR
     ocr = RapidOCR()
     engines = {}
@@ -224,17 +216,14 @@ def _tesseract_engine():
 
 
 def libs_report():
-    """Диагностика окружения PP-OCR: что лежит в checks/libs, есть ли DLL Visual C++ рядом с python.exe."""
-    libs = os.path.join(HERE, "libs")
+    """Диагностика окружения PP-OCR: библиотеки программы (site-packages), DLL Visual C++ рядом с python.exe."""
     pydir = os.path.dirname(os.path.abspath(sys.executable))
-    rep = {"libs_dir": os.path.isdir(libs),
-           "libs": sorted(n for n in os.listdir(libs) if n.endswith(".dist-info")) if os.path.isdir(libs) else [],
-           "dll": {d: os.path.isfile(os.path.join(pydir, d)) for d in ("msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll")}}
-    _libs()
+    rep = {"dll": {d: os.path.isfile(os.path.join(pydir, d)) for d in ("msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll")}}
     try:
         import onnxruntime
         rep["onnxruntime"] = onnxruntime.__version__
         rep["providers"] = onnxruntime.get_available_providers()
+        rep["onnxruntime_file"] = onnxruntime.__file__
     except BaseException:  # noqa — полный текст ошибки загрузки — в отчёт
         rep["onnxruntime_error"] = traceback.format_exc()
     return rep

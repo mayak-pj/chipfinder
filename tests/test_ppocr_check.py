@@ -91,7 +91,7 @@ def test_run_creates_photos_dir_and_asks_user(tmp_path):
 def test_libs_report_has_dll_and_libs_keys():
     rep = pc.libs_report()
     assert set(rep["dll"]) == {"msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll"}
-    assert "libs" in rep and "libs_dir" in rep
+    assert "onnxruntime" in rep or "onnxruntime_error" in rep
 
 
 def test_run_reports_load_error_in_full(tmp_path, monkeypatch):

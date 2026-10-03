@@ -92,33 +92,36 @@ def test_checks_in_build():
     assert "checks\\run_checks.py" in bp.BATS["Проверка на работе.bat"]
 
 
-def test_check_libs_and_msvc_pinned():
-    libs = dict(x.split("==") for x in bp.CHECK_LIBS)
-    assert libs["onnxruntime"] == "1.11.1"            # 1.12+ на Win7 не работает
-    assert libs["rapidocr-onnxruntime"] == "1.3.24"
+def test_ppocr_libs_come_from_requirements_and_msvc_pinned():
+    reqs = dict(x.split("==") for x in bp.windows_requirements(bp.read_lines(os.path.join(bp.ROOT, "requirements.txt")))
+                if "==" in x)
+    assert reqs["onnxruntime"] == "1.11.1"            # 1.12+ на Win7 не работает
+    assert reqs["rapidocr-onnxruntime"] == "1.3.24"
     assert bp.MSVC_WHEEL == "msvc-runtime==14.29.30133"
     assert set(bp.MSVC_DLLS) == {"msvcp140.dll", "vcruntime140_1.dll", "concrt140.dll"}
-    # с шага 0.8 те же версии — в requirements.txt программы (для Win7 — onnxruntime 1.11.1)
-    reqs = bp.windows_requirements(bp.read_lines(os.path.join(bp.ROOT, "requirements.txt")))
-    assert set(bp.CHECK_LIBS) <= set(reqs)
+    assert not hasattr(bp, "CHECK_LIBS")              # отдельных checks/libs больше нет
 
 
-def test_install_check_libs_copies_dlls(tmp_path, monkeypatch):
+def test_install_msvc_dlls_copies_dlls(tmp_path, monkeypatch):
     app = tmp_path / "app"
     (app / "python").mkdir(parents=True)
     calls = []
 
     def fake_install(target, reqs):
         calls.append((target, reqs))
-        if target.endswith("tmp_msvc"):
-            for d in ("msvcp140.dll", "vcruntime140_1.dll"):      # concrt140.dll «забыли»
-                _touch(os.path.join(target, "msvc_runtime", d))
+        for d in ("msvcp140.dll", "vcruntime140_1.dll"):      # concrt140.dll «забыли»
+            _touch(os.path.join(target, "msvc_runtime", d))
 
     monkeypatch.setattr(bp, "install_packages", fake_install)
-    missing = bp.install_check_libs(str(app))
+    missing = bp.install_msvc_dlls(str(app))
     assert missing == ["concrt140.dll"]
     assert (app / "python" / "msvcp140.dll").is_file() and not (app / "tmp_msvc").exists()
-    assert calls[0][0].replace("\\", "/").endswith("checks/libs") and calls[0][1] == bp.CHECK_LIBS
+    assert len(calls) == 1 and calls[0][1] == [bp.MSVC_WHEEL]
+
+
+def test_program_ocr_in_build():
+    files = [rel for _src, rel in bp.check_files()]
+    assert "checks/program_ocr.py" in files and "checks/ppocr_check.py" in files
 
 
 def test_ci_ppocr_answers_match_samples():
