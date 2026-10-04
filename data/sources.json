@@ -14,7 +14,7 @@
   ],
 
   "sources": [
-    {"id": "alldatasheet", "adapter": "direct_url", "name": "AllDatasheet", "level": "catalog", "lang": "en", "url": "https://www.alldatasheet.com/view.jsp?Searchword={part}", "domains": ["alldatasheet.com"], "follow": 1, "enabled": true},
+    {"id": "alldatasheet", "adapter": "alldatasheet", "name": "AllDatasheet", "level": "catalog", "lang": "en", "url": "https://www.alldatasheet.com/view.jsp?Searchword={part}", "domains": ["alldatasheet.com"], "follow": 1, "enabled": true},
     {"id": "datasheetarchive", "adapter": "direct_url", "name": "Datasheet Archive", "level": "catalog", "lang": "en", "url": "https://www.datasheetarchive.com/search?q={part}", "domains": ["datasheetarchive.com"], "follow": 1, "enabled": true},
     {"id": "findchips", "adapter": "direct_url", "name": "FindChips", "level": "catalog", "lang": "en", "url": "https://www.findchips.com/search/{part}", "domains": ["findchips.com"], "follow": 0, "enabled": true},
     {"id": "catalog_queries", "adapter": "engine_queries", "name": "Каталоги через поисковики", "level": "catalog", "lang": "en", "enabled": true,

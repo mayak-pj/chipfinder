@@ -20,7 +20,8 @@ SOURCES_PATH = os.path.join(os.path.dirname(I18N_DIR), "sources.json")
 ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 
-BUILTIN = ("google_api", "engine_html", "makers")       # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
+# модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
+BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet")
 
 
 def load_builtin() -> None:
@@ -112,7 +113,7 @@ def legacy_sources(data: Dict[str, Any]) -> Dict[str, Any]:
         for s in entries:
             if s.get("level") != lv["id"]:
                 continue
-            if s.get("adapter") == "direct_url":
+            if s.get("adapter") in ("direct_url", "alldatasheet"):
                 old.setdefault("direct", []).append({"name": s.get("name", s["id"]), "url": s["url"],
                                                      "domains": s.get("domains", []), "follow": s.get("follow", 0)})
             elif s.get("adapter") == "engine_queries":

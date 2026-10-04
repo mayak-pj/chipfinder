@@ -171,7 +171,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 - [x] `Sonnet` **2.6 Baidu** (атрибут `mu`, GB18030), **Sogou**, **360**.
 - [x] `Sonnet` **2.7 Сайты производителей** (`sources/makers/`): прямые шаблоны URL (TI, Microchip, ST, WCH, Espressif,
   GigaDevice, Winbond…) + поиск `site:`; проверка первых байт. Тест: шаблоны + fake_http.
-- [ ] `Sonnet` **2.8 AllDatasheet** (поиск → страница детали → PDF, через crawl).
+- [x] `Sonnet` **2.8 AllDatasheet** (поиск → страница детали → PDF; обход пока внутри адаптера, `crawl.py` — шаг 3.3).
 - [ ] `Sonnet` **2.9 Datasheet Archive, FindChips, datasheetspdf, datasheet4u.**
 - [ ] `Sonnet` **2.10 Китайские базы:** LCSC/szlcsc, Semiee, elecfans, 21ic, dzsc (напрямую или через поисковики).
 - [ ] `Sonnet` **2.11 Маркетплейсы китайские:** AliExpress, Taobao, 1688 (через поисковики с `site:`; из выдачи —
