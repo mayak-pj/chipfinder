@@ -21,7 +21,7 @@ ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 
 # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
-BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet")
+BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet", "catalogs.datasheet4u", "catalogs.partlist")
 
 
 def load_builtin() -> None:
@@ -113,7 +113,7 @@ def legacy_sources(data: Dict[str, Any]) -> Dict[str, Any]:
         for s in entries:
             if s.get("level") != lv["id"]:
                 continue
-            if s.get("adapter") in ("direct_url", "alldatasheet"):
+            if s.get("adapter") in ("direct_url", "alldatasheet", "datasheet4u", "datasheetarchive", "findchips"):
                 old.setdefault("direct", []).append({"name": s.get("name", s["id"]), "url": s["url"],
                                                      "domains": s.get("domains", []), "follow": s.get("follow", 0)})
             elif s.get("adapter") == "engine_queries":
