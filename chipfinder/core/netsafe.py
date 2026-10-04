@@ -57,6 +57,22 @@ class NetBlocked(Exception):
     pass
 
 
+class HttpStatus(NetBlocked):
+    """Сервер ответил кодом ≥ 400 (для решения «повторять или нет»)."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__("HTTP %d" % status)
+        self.status = status
+
+
+class NotPdf(NetBlocked):
+    """Вместо PDF пришло что-то другое (чаще всего HTML-страница)."""
+
+
+class TooBig(NetBlocked):
+    """Файл больше лимита."""
+
+
 def host_of(url: str) -> str:
     try:
         return (urlsplit(url).hostname or "").lower().strip(".")
@@ -194,7 +210,7 @@ class SafeHttp:
                 clen = r.headers.get("Content-Length")
                 if clen and clen.isdigit() and int(clen) > max_bytes and not truncate:
                     r.close()
-                    raise NetBlocked("Файл слишком большой (%s)" % _size_text(int(clen)))
+                    raise TooBig("Файл слишком большой (%s)" % _size_text(int(clen)))
                 chunks = []
                 total = 0
                 for chunk in r.iter_content(65536):
@@ -202,7 +218,7 @@ class SafeHttp:
                     if total > max_bytes:
                         if not truncate:
                             r.close()
-                            raise NetBlocked("Превышен лимит размера (%s)" % _size_text(max_bytes))
+                            raise TooBig("Превышен лимит размера (%s)" % _size_text(max_bytes))
                         chunks.append(chunk[:max(0, len(chunk) - (total - max_bytes))])
                         break
                     chunks.append(chunk)
@@ -264,18 +280,22 @@ class SafeHttp:
 
     def download_pdf(self, url: str, referer: str = "") -> Tuple[str, str, int, List[str]]:
         """Скачивает PDF в карантин. Возвращает (путь, sha256, размер, подозрительные_признаки)."""
+        return self.download_pdf_ex(url, referer)[:4]
+
+    def download_pdf_ex(self, url: str, referer: str = "") -> Tuple[str, str, int, List[str], str]:
+        """То же, плюс пятый элемент — адрес после редиректов."""
         final, hdrs, body, status = self._request(url, self.max_pdf,
                                                   accept="application/pdf,*/*;q=0.5", referer=referer)
         if status >= 400:
-            raise NetBlocked("HTTP %d" % status)
+            raise HttpStatus(status)
         head = body[:1024]
         if b"%PDF-" not in head:
-            raise NetBlocked("Это не PDF (сервер вернул %s)" % hdrs.get("content-type", "?"))
+            raise NotPdf("Это не PDF (сервер вернул %s)" % hdrs.get("content-type", "?"))
         sha = hashlib.sha256(body).hexdigest()
         path = os.path.join(self.quarantine_dir, sha[:16] + ".pdf.quarantine")
         with open(path, "wb") as f:
             f.write(body)
-        return path, sha, len(body), pdf_danger_scan(body)
+        return path, sha, len(body), pdf_danger_scan(body), final
 
 
 def _size_text(n: int) -> str:
