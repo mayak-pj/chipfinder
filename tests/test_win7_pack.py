@@ -104,3 +104,25 @@ def test_window_check_snapshot(tmp_path):
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
     assert p.returncode == 0, p.stdout.decode("utf-8", "replace")
     assert png.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_downloads_report_and_offline(tmp_path):
+    import downloads
+    rows = [{"part": "NE555", "status": "ok", "valid": 1, "leads": 3, "seconds": 4.2, "budget": False,
+             "not_whitelisted": ["files.example"], "sources": [{"id": "ddg", "status": "ok", "leads": 3, "pdfs": 1}],
+             "attempts": [
+                 {"step": "fetch", "host": "a.com", "ok": False, "failure_class": "site_protected", "error": "HTTP 403"},
+                 {"step": "crawl", "host": "b.com", "found": 0, "detail": "страница на b.com: ссылок на PDF нет"},
+                 {"step": "fetch", "host": "ti.com", "ok": True, "valid": True, "pages": 12, "size": 204800,
+                  "has_text": True, "reason": "", "active": []}]},
+            {"part": "LM358", "status": "no_leads", "valid": 0, "leads": 0, "seconds": 150.0, "budget": True,
+             "not_whitelisted": [], "sources": [], "attempts": []}]
+    hosts = [{"host": "a.com", "tried": 1, "downloaded": 0, "valid": 0, "failures": {"site_protected": 1}}]
+    text = downloads.md(rows, hosts, "Чипов 2")
+    assert "| NE555 | ok | 1 | 3 | 4.2 | a.com: ✘ site_protected; обход b.com: страница на b.com: ссылок на PDF нет; " \
+           "ti.com: ✔ 12 стр., 200 КБ |" in text
+    assert "| LM358 | no_leads (время вышло) |" in text and "ddg: ok (3)" in text
+    assert "| a.com | 1 | 0 | 0 | site_protected — 1 |" in text and "- files.example" in text
+
+    assert downloads.run(rc.Context(str(tmp_path), str(tmp_path)))["status"] == "fail"      # нет data/sources.json
+    assert "downloads" in rc.ORDER and rc.ORDER.index("downloads") > rc.ORDER.index("adapters")
