@@ -93,7 +93,8 @@ acquire/orchestrator.py  бюджеты, эскалация уровней, пр
 ### 4.3 Модели (главные поля)
 - **Lead**: url, title, snippet, source_id, level, kind (`pdf|page|forum|repo`), query, rank_score.
 - **FetchResult**: ok, path_in_quarantine, sha256, size, content_type, final_url, error.
-- **DocFacts**: pages, has_text, title, producer, parts_found{part: [страницы]}, family_patterns,
+- **DocFacts**: pages, has_text, title (метаданные), heading (крупные строки 1-й страницы), producer,
+  parts_found{part: [страницы]}, family_patterns,
   packages, manufacturers, ordering_codes, marking_codes, language, doc_type, text_fingerprint.
 - **Evidence**: code (`E1…E12`), points, detail (цитата ≤ 150 символов, страница).
 - **Verdict**: status (`confirmed|probable|rejected|needs_user`), score 0–100, evidence[], reasons[].

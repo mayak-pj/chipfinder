@@ -98,7 +98,8 @@ class DocFacts(Model):
     """Что извлечено из документа."""
     pages: int = 0
     has_text: bool = False
-    title: str = ""
+    title: str = ""           # заголовок из метаданных PDF
+    heading: str = ""         # заголовок первой страницы: строки самым крупным шрифтом
     producer: str = ""
     parts_found: Dict[str, List[int]] = field(default_factory=dict)   # партномер → страницы (с 1)
     family_patterns: List[str] = field(default_factory=list)          # "STM32F103x8"

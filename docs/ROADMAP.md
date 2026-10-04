@@ -200,7 +200,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   исправление.
 
 ## Фаза 4. Извлечение и проверка содержания
-- [ ] `Opus` **4.1 Факты документа** `acquire/extract.py` (DocFacts). Тесты на синтетических PDF (генератор в
+- [x] `Opus` **4.1 Факты документа** `acquire/extract.py` (DocFacts). Тесты на синтетических PDF (генератор в
   `tests/fixtures/make_pdfs.py`): правильный, семейство с `x`, app note, каталог, чужой, скан, китайский.
 - [ ] `Sonnet` **4.2 Тип документа** `acquire/classify.py`. Тесты: те же PDF → ожидаемый тип.
 - [ ] `Opus` **4.3 Улики и вердикт** `acquire/verify.py` + `acquire/decide.py` (ARCHITECTURE §4.4, веса в
