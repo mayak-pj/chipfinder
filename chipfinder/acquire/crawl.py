@@ -137,10 +137,12 @@ def _blocked_site(exc: Exception, url: str) -> str:
 
 
 def crawl(http: Any, lead: Lead, bus: Optional[EventBus] = None, max_depth: int = MAX_DEPTH,
-          max_pages: int = MAX_PAGES, cancelled: Callable[[], bool] = lambda: False) -> List[Lead]:
+          max_pages: int = MAX_PAGES, cancelled: Callable[[], bool] = lambda: False,
+          force: bool = False) -> List[Lead]:
     """Ссылки на PDF со страницы `lead.url` и вложенных страниц. `snippet` найденной ссылки — адрес страницы,
-    где она стояла (нужен как Referer при скачивании); источник, уровень, запрос и язык — от `lead`."""
-    if lead.kind == "pdf" or urlsplit(lead.url).path.lower().endswith(".pdf"):
+    где она стояла (нужен как Referer при скачивании); источник, уровень, запрос и язык — от `lead`.
+    `force` — открыть как страницу, даже если адрес похож на PDF (сервер вместо файла отдал HTML)."""
+    if not force and (lead.kind == "pdf" or urlsplit(lead.url).path.lower().endswith(".pdf")):
         return [lead]
     if cancelled():
         return []

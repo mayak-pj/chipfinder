@@ -167,3 +167,10 @@ def test_cancel(tmp_path):
     fake = FakeHttp().add(PAGE, '<iframe src="/f1"></iframe>')
     leads, events = run(tmp_path, fake, cancelled=lambda: True)
     assert leads == [] and fake.calls == [] and events == []
+
+
+def test_force_opens_pdf_like_address_as_page(tmp_path):
+    url = "https://www.ti.com/lit/ne555.pdf"
+    fake = FakeHttp().add(url, '<a href="/real/ne555.pdf">Download</a>')
+    leads, _ = run(tmp_path, fake, lead=Lead(url=url, kind="pdf"), force=True)
+    assert [x.url for x in leads] == ["https://www.ti.com/real/ne555.pdf"] and leads[0].snippet == url
