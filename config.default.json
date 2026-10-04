@@ -63,6 +63,14 @@
   },
 
   "acquire": {
-    "api_keys": {"google_api": {"key": "", "cx": ""}}
+    "api_keys": {"google_api": {"key": "", "cx": ""}},
+    "weights": {
+      "E1_front": 30, "E1_any": 20, "E2": 15, "E3": 15, "E4": 10,
+      "E5": {"datasheet": 15, "family": 15, "app_note": -20, "errata": -20, "reference_manual": -20, "catalog": -20,
+             "distributor_page": -30},
+      "E6_match": 10, "E6_conflict": -15, "E7_match": 10, "E7_conflict": -10, "E8": 10,
+      "E9_maker": 10, "E9_catalog": 5, "E9_bad": -10, "E10": 10, "E11": -30
+    },
+    "thresholds": {"confirmed": 70, "probable": 45}
   }
 }

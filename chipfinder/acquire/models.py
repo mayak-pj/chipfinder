@@ -117,6 +117,15 @@ class DocFacts(Model):
 
 
 @dataclass
+class PhotoContext(Model):
+    """Что известно о чипе с фото: с этим сверяется документ (acquire/verify.py)."""
+    part: str = ""            # партномер как прочитан, с суффиксом, если он есть
+    manufacturer: str = ""    # по логотипу или префиксу партномера
+    package: str = ""         # "SOIC-8", "SOT-23"
+    marking: str = ""         # короткий код маркировки (SMD-код)
+
+
+@dataclass
 class Evidence(Model):
     """Одна улика проверки (§4.4)."""
     _required = "code"

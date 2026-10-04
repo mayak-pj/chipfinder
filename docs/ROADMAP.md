@@ -203,7 +203,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 - [x] `Opus` **4.1 Факты документа** `acquire/extract.py` (DocFacts). Тесты на синтетических PDF (генератор в
   `tests/fixtures/make_pdfs.py`): правильный, семейство с `x`, app note, каталог, чужой, скан, китайский.
 - [x] `Sonnet` **4.2 Тип документа** `acquire/classify.py`. Тесты: те же PDF → ожидаемый тип.
-- [ ] `Opus` **4.3 Улики и вердикт** `acquire/verify.py` + `acquire/decide.py` (ARCHITECTURE §4.4, веса в
+- [x] `Opus` **4.3 Улики и вердикт** `acquire/verify.py` + `acquire/decide.py` (ARCHITECTURE §4.4, веса в
   `config.default.json → acquire.weights`). Тесты: таблица «PDF + контекст фото → статус, баллы, коды улик».
 - [ ] `Sonnet` **4.4 Отпечаток текста** (simhash) и поиск дублей. Тесты: тот же текст с другими метаданными = дубль.
 
