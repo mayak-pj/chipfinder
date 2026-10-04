@@ -238,3 +238,19 @@ def test_world_marketplaces():
         assert site in data["pdf_hosts"]
     assert all("{part}" in x for x in q["queries"])
     assert all(v in src for v in q["via"])
+
+
+def test_forums_marking_github_sources():
+    """Шаг 2.14: форумы и базы SMD-кодов — запросы с site:, GitHub — свой адаптер."""
+    import json
+    from pathlib import Path
+    data = json.loads((Path(__file__).resolve().parents[1] / "data" / "sources.json").read_text(encoding="utf-8"))
+    src = {s["id"]: s for s in data["sources"]}
+    forums = " ".join(src["forum_queries"]["queries"])
+    for site in ("eevblog.com", "electronix.ru", "radiokot.ru"):
+        assert "site:" + site in forums and site in data["pdf_hosts"]
+    marking = " ".join(src["marking_queries"]["queries"])
+    for site in ("s-manuals.com", "alltransistors.com", "smd.yooneed.one"):
+        assert "site:" + site in marking and site in data["pdf_hosts"]
+    assert all("{code}" in x for x in src["marking_queries"]["queries"])
+    assert src["github"]["adapter"] == "github_api" and "{part}" in src["github"]["url"]

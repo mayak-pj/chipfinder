@@ -1,0 +1,5 @@
+{"total_count": 2, "items": [
+ {"full_name": "example/ne555-docs", "html_url": "https://github.com/example/ne555-docs", "description": "NE555 datasheets and notes"},
+ {"full_name": "example/timers", "html_url": "https://github.com/example/timers", "description": null},
+ {"full_name": "broken", "html_url": ""}
+]}
