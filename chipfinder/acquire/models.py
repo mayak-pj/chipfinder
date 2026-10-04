@@ -82,6 +82,18 @@ class FetchResult(Model):
 
 
 @dataclass
+class ValidationResult(Model):
+    """Итог проверки файла из карантина (acquire/validate.py). `ok=False` — жёсткий отказ (§4.4)."""
+    ok: bool = False
+    reason: str = ""          # not_pdf | too_big | damaged | encrypted | active_content, пусто при успехе
+    pages: int = 0
+    has_text: bool = False    # False при ok — скан без текстового слоя
+    size: int = 0
+    active: List[str] = field(default_factory=list)   # найденное активное содержимое: "JavaScript", "Launch"...
+    detail: str = ""          # подробность для журнала и паспорта (текст ошибки разбора)
+
+
+@dataclass
 class DocFacts(Model):
     """Что извлечено из документа."""
     pages: int = 0

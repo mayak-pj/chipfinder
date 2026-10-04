@@ -44,6 +44,7 @@
   "validate.scan": "File check: format ✔ safe ✔ {pages:page|pages}, scan without text",
   "validate.not_pdf": "File check: not a PDF, rejected",
   "validate.encrypted": "File check: the PDF is encrypted, rejected",
+  "validate.damaged": "File check: the PDF is damaged or empty, rejected",
   "validate.active_content": "File check: active content ({what}), rejected",
   "validate.too_big": "File check: too large ({size:size}), rejected",
 

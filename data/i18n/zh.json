@@ -44,6 +44,7 @@
   "validate.scan": "文件检查：格式 ✔ 安全 ✔ {pages} 页，扫描件，无文本",
   "validate.not_pdf": "文件检查：不是 PDF，已拒绝",
   "validate.encrypted": "文件检查：PDF 已加密，已拒绝",
+  "validate.damaged": "文件检查：PDF 已损坏或为空，已拒绝",
   "validate.active_content": "文件检查：含有活动内容（{what}），已拒绝",
   "validate.too_big": "文件检查：文件过大（{size:size}），已拒绝",
 

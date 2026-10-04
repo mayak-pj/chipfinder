@@ -44,7 +44,7 @@ KEYS = {
     "fetch.start": "", "fetch.progress": "", "fetch.done": "ok", "fetch.failed": "fail",
     "quarantine.placed": "ok",
     "validate.ok": "ok", "validate.scan": "ok", "validate.not_pdf": "fail", "validate.encrypted": "fail",
-    "validate.active_content": "fail", "validate.too_big": "fail",
+    "validate.active_content": "fail", "validate.too_big": "fail", "validate.damaged": "fail",
     "verify.result": "ok", "verify.rejected": "fail",
     "confirm.search": "", "confirm.identical": "ok", "confirm.none": "empty",
     "access.site_protected": "fail", "access.network_blocked": "fail", "access.not_whitelisted": "skip",
