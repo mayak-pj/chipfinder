@@ -174,7 +174,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 - [x] `Sonnet` **2.8 AllDatasheet** (поиск → страница детали → PDF; обход пока внутри адаптера, `crawl.py` — шаг 3.3).
 - [x] `Sonnet` **2.9 Datasheet Archive, FindChips, datasheetspdf, datasheet4u.**
 - [x] `Sonnet` **2.10 Китайские базы:** LCSC/szlcsc, Semiee, elecfans, 21ic, dzsc (напрямую или через поисковики).
-- [ ] `Sonnet` **2.11 Маркетплейсы китайские:** AliExpress, Taobao, 1688 (через поисковики с `site:`; из выдачи —
+- [x] `Sonnet` **2.11 Маркетплейсы китайские:** AliExpress, Taobao, 1688 (через поисковики с `site:`; из выдачи —
   партномер, производитель, корпус, ссылки на PDF).
 - [ ] `Sonnet` **2.12 Маркетплейсы российские:** Чип и Дип, Промэлектроника, ЭФО (напрямую, если HTML), Ozon (через поисковики).
 - [ ] `Sonnet` **2.13 Маркетплейсы мировые:** eBay, Mouser, DigiKey, Farnell, Arrow (через поисковики; API — фаза 9).

@@ -56,7 +56,10 @@
        "{part} 数据手册 pdf",
        "{part} 规格书",
        "{part} datasheet site:elecfans.com OR site:21ic.com OR site:dzsc.com OR site:semiee.com",
-       "{part} site:eeworld.com.cn OR site:51hei.com OR site:amobbs.com OR site:icpdf.com"
+       "{part} site:eeworld.com.cn OR site:51hei.com OR site:amobbs.com OR site:icpdf.com",
+       "{part} site:aliexpress.com OR site:aliexpress.ru",
+       "{part} 芯片 site:taobao.com OR site:tmall.com OR site:item.taobao.com",
+       "{part} 现货 site:1688.com OR site:detail.1688.com"
      ]},
 
     {"id": "yandex", "adapter": "engine_html", "name": "Яндекс", "level": "russian", "lang": "ru", "url": "https://yandex.ru/search/?text={q}", "decoder": "yandex", "domains": ["yandex.ru"], "enabled": true},
@@ -104,6 +107,7 @@
     "s-manuals.com", "alltransistors.com", "smd.yooneed.one",
     "eevblog.com", "electronics.stackexchange.com", "badcaps.net", "reddit.com",
     "electronix.ru", "radiokot.ru", "forum.cxem.net", "kazus.ru", "vrtp.ru",
+    "aliexpress.com", "aliexpress.ru", "taobao.com", "tmall.com", "1688.com",
     "amobbs.com", "github.com", "api.github.com", "raw.githubusercontent.com"
   ]
 }

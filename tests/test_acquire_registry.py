@@ -191,3 +191,16 @@ def test_legacy_view_for_v1_search():
     assert marking["for_codes"] and "{code}" in marking["queries"][0]
     assert github["github_api"].startswith("https://api.github.com/")
     assert legacy_sources(old) is old
+
+
+def test_china_marketplaces_via_search_engines():
+    """Шаг 2.11: AliExpress, Taobao, 1688 — запросы с site: у китайских поисковиков, домены в белом списке."""
+    import json
+    from pathlib import Path
+    data = json.loads((Path(__file__).resolve().parents[1] / "data" / "sources.json").read_text(encoding="utf-8"))
+    src = {s["id"]: s for s in data["sources"]}["china_queries"]
+    text = " ".join(src["queries"])
+    for site in ("aliexpress.com", "taobao.com", "1688.com"):
+        assert "site:" + site in text
+        assert site in data["pdf_hosts"]
+    assert all("{part}" in q for q in src["queries"])
