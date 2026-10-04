@@ -21,7 +21,7 @@ ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 
 # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
-BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet", "catalogs.datasheet4u", "catalogs.partlist")
+BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet", "catalogs.datasheet4u", "catalogs.partlist", "catalogs.china")
 
 
 def load_builtin() -> None:

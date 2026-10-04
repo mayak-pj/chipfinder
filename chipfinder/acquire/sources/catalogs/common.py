@@ -22,7 +22,7 @@ _TAG = re.compile(r"<[^>]+>")
 def is_blocked(status: int, page: str) -> bool:
     """Страница проверки Cloudflare вместо сайта."""
     low = page[:200000].lower()
-    return ("just a moment" in low and "challenge" in low) or "challenges.cloudflare.com" in low or (
+    return "waf拦截页面" in low or ("just a moment" in low and "challenge" in low) or "challenges.cloudflare.com" in low or (
         status in (403, 503) and "cloudflare" in low)
 
 
