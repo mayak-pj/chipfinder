@@ -164,8 +164,55 @@ def chinese():
     ], title="GD25Q64C 数据手册", producer="WPS Office")
 
 
+def errata():
+    """Список ошибок кристалла: о том же чипе, но не datasheet."""
+    return make_pdf([
+        [("STM32F103x8 Errata sheet", 20), "STM32F103x8 and STM32F103xB device limitations", "STMicroelectronics",
+         "Silicon identification", "This errata sheet applies to revision B of the devices.",
+         "For the electrical characteristics refer to the STM32F103x8 datasheet."],
+        ["STM32F103x8", "2.1 Voltage glitch on ADC input 0", "Description", "Workaround: none."],
+    ], title="STM32F103x8 errata sheet", author="STMicroelectronics")
+
+
+def reference_manual():
+    """Справочное руководство по семейству: регистры и периферия, электрических параметров нет."""
+    return make_pdf([
+        [("RM0008", 22), ("Reference manual", 22), "STM32F101xx, STM32F103xx advanced ARM-based 32-bit MCUs",
+         "Introduction", "This reference manual targets application developers.",
+         "For ordering information and electrical characteristics please refer to the datasheets."],
+        ["RM0008", "1 Documentation conventions", "2 Memory and bus architecture", "3 CRC calculation unit"],
+    ], title="RM0008 Reference manual", author="STMicroelectronics")
+
+
+def product_brief():
+    """Краткое описание изделия: одна страница без таблиц параметров."""
+    return make_pdf([
+        [("ESP32-C3 Product Brief", 20), "Espressif Systems",
+         "Low-power 2.4 GHz Wi-Fi and Bluetooth LE system on chip", "Features", "RISC-V single-core processor",
+         "Applications: smart home, industrial automation", "For details see the full datasheet."],
+    ], title="ESP32-C3 Product Brief")
+
+
+def distributor():
+    """Страница магазина, сохранённая в PDF: цена, наличие, корзина."""
+    return make_pdf([
+        ["Mouser Electronics", ("NE555P Texas Instruments", 14), "Timers and Support Products",
+         "In Stock: 12 450", "Unit Price: 0.52", "Quantity   Price break", "1   0.52", "100   0.31",
+         "Add to Cart", "Datasheet   NE555 datasheet (PDF)", "Package: PDIP-8"],
+    ], title="NE555P Texas Instruments | Mouser")
+
+
+def unrelated():
+    """Посторонний документ: микросхем в нём нет."""
+    return make_pdf([
+        [("Annual report 2023", 20), "Letter to shareholders", "Revenue grew by 4 percent over the previous year.",
+         "The board proposes a dividend at the general meeting in May."],
+    ], title="Annual report 2023")
+
+
 DOCS = {"datasheet": datasheet, "family": family, "app_note": app_note, "catalog": catalog, "foreign": foreign,
-        "scan": scan, "chinese": chinese}
+        "scan": scan, "chinese": chinese, "errata": errata, "reference_manual": reference_manual,
+        "product_brief": product_brief, "distributor": distributor, "unrelated": unrelated}
 
 
 def write(name, folder):
