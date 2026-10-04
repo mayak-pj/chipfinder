@@ -203,3 +203,64 @@ class DiagnosticsDialog(QDialog):
             for d in allowed:
                 f.write("  %s\n" % d)
         QMessageBox.information(self, "Готово", "Список сохранён:\n%s" % p)
+
+
+ADAPTER_STATUS = {
+    "ok": ("✔ доступен", "#1a7f37"), "empty": ("○ пусто", "#9a6700"), "captcha": ("✘ капча", "#c62828"),
+    "no_key": ("— нет ключа", "#6e7781"), "quota": ("✘ лимит запросов", "#c62828"),
+    "error": ("✘ ошибка сети", "#c62828"), "parse_error": ("✘ ошибка разбора", "#c62828"),
+    "no_adapter": ("✘ нет адаптера", "#c62828"), "disabled": ("— выключен", "#6e7781"),
+}
+
+
+class AdaptersDialog(QDialog):
+    """Результат диагностики по адаптерам: тестовый запрос (NE555) к каждому источнику."""
+
+    def __init__(self, rows, parent=None):
+        super().__init__(parent)
+        from ..acquire.diagnose import summary
+        self.rows = rows
+        self.setWindowTitle("Диагностика адаптеров")
+        self.resize(900, 600)
+        lay = QVBoxLayout(self)
+        st = summary(rows)
+        lay.addWidget(QLabel("Тестовый запрос NE555. Доступно %d из %d; остальное — см. столбец «Результат»."
+                             % (st.get("ok", 0), len(rows))))
+        t = QTableWidget(len(rows), 5)
+        t.setHorizontalHeaderLabels(["Уровень", "Источник", "Результат", "Найдено", "Подробности"])
+        for i, r in enumerate(rows):
+            text, color = ADAPTER_STATUS.get(r["status"], (r["status"], "#c62828"))
+            vals = [r["level"], r["name"], text, "%d (PDF %d)" % (r["leads"], r["pdfs"]), r["detail"]]
+            for j, v in enumerate(vals):
+                it = QTableWidgetItem(v)
+                it.setForeground(QColor(color))
+                t.setItem(i, j, it)
+        t.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        t.resizeColumnsToContents()
+        t.setEditTriggers(QTableWidget.NoEditTriggers)
+        lay.addWidget(t)
+        h = QHBoxLayout()
+        save = QPushButton("Сохранить список закрытых сайтов для администраторов…")
+        save.clicked.connect(self._save)
+        h.addWidget(save)
+        h.addStretch()
+        close = QPushButton("Закрыть")
+        close.clicked.connect(self.accept)
+        h.addWidget(close)
+        lay.addLayout(h)
+
+    def _save(self):
+        from ..acquire.diagnose import admin_domains
+        p = QFileDialog.getSaveFileName(self, "Сохранить", "запрос_доступа_ChipFinder.txt", "Текст (*.txt)")[0]
+        if not p:
+            return
+        blocked = admin_domains(self.rows)
+        with io.open(p, "w", encoding="utf-8") as f:
+            f.write("Запрос на доступ для программы ChipFinder (поиск технической документации на микросхемы)\n")
+            f.write("Дата проверки: %s\n\n" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            f.write("Программа обращается только к перечисленным доменам по HTTPS (порт 443), только чтение\n"
+                    "страниц поиска и скачивание PDF. Все обращения пишутся в logs/network_audit.log.\n\n")
+            f.write("НЕДОСТУПНЫ, прошу открыть (%d):\n" % len(blocked))
+            for d in blocked:
+                f.write("  %s\n" % d)
+        QMessageBox.information(self, "Готово", "Список сохранён:\n%s" % p)

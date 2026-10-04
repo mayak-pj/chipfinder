@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox
 from ..core.config import resolve_path
 from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
-from .dialogs import DiagnosticsDialog, SettingsDialog
+from .dialogs import AdaptersDialog, DiagnosticsDialog, SettingsDialog
 from .worker import Job
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
@@ -127,6 +127,7 @@ class MainWindow(QMainWindow):
         m.addAction("Открыть папку библиотеки", lambda: self._open_path(self.ctx and self.ctx.modules["local_db"].library_dir))
         m = mb.addMenu("Сеть")
         m.addAction("Диагностика: какие сайты доступны", self.diagnose)
+        m.addAction("Диагностика адаптеров поиска (тест NE555)", self.diagnose_adapters)
         m.addAction("Журнал сетевых обращений", lambda: self._open_path(
             os.path.join(resolve_path(self.app_dir, self.ctx.config["paths"]["log_dir"]), "network_audit.log")))
         m.addAction("Папка карантина", lambda: self._open_path(resolve_path(self.app_dir, self.ctx.config["paths"]["quarantine_dir"])))
@@ -662,6 +663,16 @@ class MainWindow(QMainWindow):
         ws = self.ctx.modules["web_search"]
         self.start_job(lambda progress, cancel: ws.diagnose(progress, cancel),
                        lambda rows: DiagnosticsDialog(rows, self).exec_())
+
+    def diagnose_adapters(self):
+        from ..acquire.diagnose import diagnose_adapters
+        from ..acquire.registry import Registry
+        ws = self.ctx.modules["web_search"]
+        path = os.path.join(self.app_dir, "data", "sources.json")
+        keys = self.ctx.config.get("acquire", {}).get("api_keys", {})
+        ws.http.add_allowed(Registry.load(path).allowed_domains())
+        self.start_job(lambda progress, cancel: diagnose_adapters(path, ws.http, keys, progress=progress, cancel=cancel),
+                       lambda rows: AdaptersDialog(rows, self).exec_())
 
     def settings(self):
         dlg = SettingsDialog(self.ctx, self)

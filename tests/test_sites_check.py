@@ -86,3 +86,23 @@ def test_run_end_to_end_with_fake(tmp_path, monkeypatch):
     assert ti["verdict"] == "unreachable:reset"
     assert os.path.isfile(str(tmp_path / "sites.md"))
     assert os.listdir(str(tmp_path / "pages"))
+
+
+def test_adapters_check_runs_offline(tmp_path, monkeypatch):
+    """Шаг 2.15: проверка adapters проходит весь sources.json без сети и пишет отчёт."""
+    import adapters
+    import run_checks
+
+    def fake_http(app_dir, hosts, work_dir):
+        http = SafeHttp({"min_interval_sec": 0}, str(tmp_path / "q"), logging.getLogger("t"), transport=FakeHttp())
+        http.add_allowed(hosts)
+        return http, {}
+    monkeypatch.setattr(sites, "make_http", fake_http)
+    ctx = run_checks.Context(ROOT, str(tmp_path / "w"), "adapters")
+    os.makedirs(ctx.work_dir)
+    res = adapters.run(ctx)
+    assert res["status"] == "ok" and res["sources"] >= 30
+    assert "no_adapter" in res["summary"] or "error" in res["summary"]
+    for fn in ("adapters.md", "adapters.json", "для_администраторов.txt"):
+        assert os.path.isfile(os.path.join(ctx.work_dir, fn))
+    assert "adapters" in run_checks.discover(os.path.join(ROOT, "tools", "win7_pack"))
