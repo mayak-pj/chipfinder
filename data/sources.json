@@ -64,6 +64,14 @@
 
     {"id": "yandex", "adapter": "engine_html", "name": "Яндекс", "level": "russian", "lang": "ru", "url": "https://yandex.ru/search/?text={q}", "decoder": "yandex", "domains": ["yandex.ru"], "enabled": true},
 
+    {"id": "chipdip", "adapter": "direct_url", "name": "Чип и Дип", "level": "russian", "lang": "ru", "label": "Чип и Дип chipdip.ru", "url": "https://www.chipdip.ru/search?searchtext={part}", "domains": ["chipdip.ru", "static.chipdip.ru"], "follow": 1, "enabled": true},
+    {"id": "russian_queries", "adapter": "engine_queries", "name": "Российские магазины через поисковики", "level": "russian", "lang": "ru", "enabled": true,
+     "via": ["yandex", "duckduckgo", "bing"],
+     "queries": [
+       "{part} даташит pdf",
+       "{part} site:promelec.ru OR site:efo.ru OR site:compel.ru OR site:elitan.ru",
+       "{part} купить site:ozon.ru"
+     ]},
     {"id": "forum_queries", "adapter": "engine_queries", "name": "Форумы через поисковики", "level": "forum", "lang": "", "enabled": true,
      "via": ["duckduckgo", "bing", "yandex"],
      "queries": [
@@ -107,6 +115,7 @@
     "s-manuals.com", "alltransistors.com", "smd.yooneed.one",
     "eevblog.com", "electronics.stackexchange.com", "badcaps.net", "reddit.com",
     "electronix.ru", "radiokot.ru", "forum.cxem.net", "kazus.ru", "vrtp.ru",
+    "chipdip.ru", "static.chipdip.ru", "promelec.ru", "efo.ru", "compel.ru", "elitan.ru", "ozon.ru",
     "aliexpress.com", "aliexpress.ru", "taobao.com", "tmall.com", "1688.com",
     "amobbs.com", "github.com", "api.github.com", "raw.githubusercontent.com"
   ]

@@ -81,3 +81,13 @@ def test_waf_block_is_captcha_and_rests(tmp_path):
 def test_other_part_empty_query(tmp_path):
     ad, http, fake, events = make(tmp_path)
     assert ad.find("", http) == []
+
+
+def test_chipdip_product_and_pdf_links():
+    """Шаг 2.12: выдача Чип и Дип — карточки с партномером в адресе, PDF на static.chipdip.ru."""
+    page = ('<a href="/product/ne555dr-taymer-555-texas-instruments-64173">NE555DR таймер</a>'
+            '<a href="/search/video?searchtext=NE555">Видео</a>'
+            '<a href="https://static.chipdip.ru/lib2/b/247/DOC087247989.pdf">PDF</a>')
+    details, pdfs = links(page, "https://www.chipdip.ru/search", ["chipdip.ru", "static.chipdip.ru"], ["NE555"])
+    assert pdfs == ["https://static.chipdip.ru/lib2/b/247/DOC087247989.pdf"]
+    assert details[0][0].endswith("-64173")
