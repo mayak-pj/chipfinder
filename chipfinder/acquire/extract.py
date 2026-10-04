@@ -18,6 +18,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
+from .fingerprint import fingerprint_pages
 from .models import DocFacts
 
 log = logging.getLogger("chipfinder.acquire.extract")
@@ -227,6 +228,7 @@ def facts_from_text(doc: DocText, hints: Sequence[str] = ()) -> DocFacts:
         facts.heading = ""
         return facts
     facts.language = _language(whole)
+    facts.text_fingerprint = fingerprint_pages(doc.texts[n] for n in numbers)
     parts: Dict[str, List[int]] = {}
     wanted = [(h, re.compile(r"(?<![A-Z0-9])%s(?![A-Z0-9])" % " ?".join(re.escape(c) for c in h)))
               for h in _unique(re.sub(r"\s+", "", h or "").upper() for h in hints) if h]

@@ -36,7 +36,7 @@ def test_datasheet(pdf):
     assert "N555" in f.marking_codes and "NE555" in f.marking_codes
     assert not any(c.startswith(("PDIP", "SOIC", "TSSOP")) for c in f.marking_codes + f.ordering_codes)
     assert f.family_patterns == []
-    assert f.doc_type == "" and f.text_fingerprint == ""       # шаги 4.2 и 4.4
+    assert f.doc_type == "" and len(f.text_fingerprint) == 16   # тип — шаг 4.2, отпечаток — 4.4
     assert DocFacts.from_json(f.to_json()) == f
 
 
