@@ -15,7 +15,7 @@ from chipfinder.acquire.events import (
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(APP, "tools"))
-import search_cli  # noqa: E402
+search_cli = pytest.importorskip("search_cli", reason="нет tools/ (портативная сборка)")
 
 FORMS = ("вариант", "варианта", "вариантов")
 

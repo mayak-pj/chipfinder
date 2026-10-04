@@ -3,13 +3,15 @@
 import json
 import logging
 import os
+
+import pytest
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools", "win7_pack"))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 
-import sites  # noqa: E402
+sites = pytest.importorskip("sites", reason="нет tools/win7_pack (портативная сборка)")
 from chipfinder.core.netsafe import SafeHttp  # noqa: E402
 from fakes.fake_http import FakeHttp  # noqa: E402
 
