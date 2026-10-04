@@ -6,6 +6,7 @@
     {"id": "catalog", "name": "1. Сайты-каталоги datasheet", "enabled": true},
     {"id": "maker",   "name": "2. Сайт производителя", "enabled": true},
     {"id": "search",  "name": "Поисковики (английский)", "enabled": true},
+    {"id": "world",   "name": "Мировые магазины", "enabled": true},
     {"id": "china",   "name": "3. Китайский интернет", "enabled": true},
     {"id": "russian", "name": "Русский интернет", "enabled": true},
     {"id": "forum",   "name": "4. Форумы инженеров", "enabled": true},
@@ -72,6 +73,13 @@
        "{part} site:promelec.ru OR site:efo.ru OR site:compel.ru OR site:elitan.ru",
        "{part} купить site:ozon.ru"
      ]},
+    {"id": "world_queries", "adapter": "engine_queries", "name": "Мировые магазины через поисковики", "level": "world", "lang": "en", "enabled": true,
+     "via": ["duckduckgo", "bing", "brave"],
+     "queries": [
+       "{part} datasheet site:mouser.com OR site:digikey.com",
+       "{part} datasheet site:farnell.com OR site:arrow.com OR site:newark.com",
+       "{part} site:ebay.com"
+     ]},
     {"id": "forum_queries", "adapter": "engine_queries", "name": "Форумы через поисковики", "level": "forum", "lang": "", "enabled": true,
      "via": ["duckduckgo", "bing", "yandex"],
      "queries": [
@@ -105,7 +113,7 @@
 
   "pdf_hosts": [
     "alldatasheet.com", "datasheetspdf.com", "datasheet4u.com", "datasheetarchive.com", "findchips.com",
-    "lcsc.com", "szlcsc.com", "jlcpcb.com", "mouser.com", "mouser.cn", "digikey.com", "farnell.com", "arrow.com",
+    "lcsc.com", "szlcsc.com", "jlcpcb.com", "mouser.com", "mouser.cn", "digikey.com", "farnell.com", "arrow.com", "newark.com", "ebay.com",
     "st.com", "ti.com", "microchip.com", "ww1.microchip.com", "nxp.com", "onsemi.com", "infineon.com", "analog.com",
     "renesas.com", "wch-ic.com", "wch.cn", "gigadevice.com", "gd32mcu.com", "winbond.com", "macronix.com", "issi.com",
     "espressif.com", "holtek.com", "holtek.com.tw", "stcmicro.com", "stcmcudata.com", "padauk.com.tw", "puyasemi.com",

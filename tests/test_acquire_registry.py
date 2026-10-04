@@ -184,8 +184,9 @@ def test_legacy_view_for_v1_search():
     old = legacy_sources(read_json(SOURCES))
     assert set(old["engines"]) == {"duckduckgo", "bing", "mojeek", "brave", "yandex", "baidu", "bing_cn", "sogou",
                                    "so360"}
-    assert [lv["id"] for lv in old["levels"]] == ["catalog", "maker", "china", "russian", "forum", "marking", "github"]
-    catalog, marking, github = old["levels"][0], old["levels"][5], old["levels"][6]
+    assert [lv["id"] for lv in old["levels"]] == ["catalog", "maker", "world", "china", "russian", "forum", "marking",
+                                                   "github"]
+    catalog, marking, github = old["levels"][0], old["levels"][6], old["levels"][7]
     assert [d["name"] for d in catalog["direct"]] == ["AllDatasheet", "Datasheet Archive", "FindChips", "Datasheet4U"]
     assert catalog["engines"] == ["duckduckgo", "bing", "mojeek", "brave"] and len(catalog["queries"]) == 3
     assert marking["for_codes"] and "{code}" in marking["queries"][0]
@@ -217,6 +218,22 @@ def test_russian_marketplaces():
     q = src["russian_queries"]
     text = " ".join(q["queries"])
     for site in ("promelec.ru", "efo.ru", "ozon.ru"):
+        assert "site:" + site in text
+        assert site in data["pdf_hosts"]
+    assert all("{part}" in x for x in q["queries"])
+    assert all(v in src for v in q["via"])
+
+
+def test_world_marketplaces():
+    """Шаг 2.13: eBay, Mouser, DigiKey, Farnell, Arrow — запросы с site: у английских поисковиков."""
+    import json
+    from pathlib import Path
+    data = json.loads((Path(__file__).resolve().parents[1] / "data" / "sources.json").read_text(encoding="utf-8"))
+    src = {s["id"]: s for s in data["sources"]}
+    q = src["world_queries"]
+    assert q["adapter"] == "engine_queries" and q["level"] == "world"
+    text = " ".join(q["queries"])
+    for site in ("mouser.com", "digikey.com", "farnell.com", "arrow.com", "ebay.com"):
         assert "site:" + site in text
         assert site in data["pdf_hosts"]
     assert all("{part}" in x for x in q["queries"])
