@@ -39,9 +39,9 @@ def test_statuses(tmp_path):
     rows = {r["id"]: r for r in diagnose.diagnose_adapters(None, http, data=DATA)}
     assert rows["gh"]["status"] == "ok" and rows["gh"]["leads"] == 1
     assert rows["g"]["status"] == "no_key"
-    assert rows["q"]["status"] == "no_adapter"
+    assert rows["q"]["status"] == "empty"        # нет поисковиков `via` → site.empty
     assert rows["off"]["status"] == "disabled"
-    assert diagnose.summary(list(rows.values())) == {"ok": 1, "no_key": 1, "no_adapter": 1, "disabled": 1}
+    assert diagnose.summary(list(rows.values())) == {"ok": 1, "no_key": 1, "empty": 1, "disabled": 1}
 
 
 def test_empty_error_quota_and_parse_error(tmp_path):

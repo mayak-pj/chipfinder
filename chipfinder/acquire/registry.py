@@ -22,7 +22,7 @@ ADAPTERS: Dict[str, Type[SourceAdapter]] = {}
 
 # модули chipfinder/acquire/sources/: новый адаптер добавляется сюда
 BUILTIN = ("google_api", "engine_html", "makers", "catalogs.alldatasheet", "catalogs.datasheet4u", "catalogs.partlist",
-           "catalogs.china", "github_api")
+           "catalogs.china", "github_api", "engine_queries")
 
 
 def load_builtin() -> None:
@@ -47,6 +47,7 @@ class Registry:
         if adapters is None:
             load_builtin()
         self._adapters = ADAPTERS if adapters is None else adapters
+        self._built: Dict[str, SourceAdapter] = {}      # один экземпляр на источник: общий отдых после капчи
         self.missing: List[str] = []      # id источников, для которых нет класса адаптера
         self._levels = [dict(lv) for lv in self.data.get("levels", [])]
         self._entries = [SourceEntry.from_dict(s) for s in self.data.get("sources", [])]
@@ -71,18 +72,30 @@ class Registry:
                and (include_disabled or (e.enabled and e.level not in off))]
         return sorted(out, key=lambda e: order.get(e.level, len(order)))     # сортировка устойчивая
 
+    def _make(self, entry: SourceEntry) -> Optional[SourceAdapter]:
+        if entry.id in self._built:
+            return self._built[entry.id]
+        cls = self._adapters.get(entry.adapter)
+        if cls is None:
+            if entry.id not in self.missing:
+                self.missing.append(entry.id)
+                log.warning("источник «%s»: нет адаптера «%s», пропущен", entry.id, entry.adapter)
+            return None
+        ad = cls(entry, bus=self.bus, key=self.keys.get(entry.needs_key) if entry.needs_key else None)
+        ad.registry = self
+        self._built[entry.id] = ad
+        return ad
+
     def build(self, level: Optional[str] = None) -> List[SourceAdapter]:
         """Адаптеры включённых источников, готовые к `search()`."""
-        built = []
-        for entry in self.entries(level):
-            cls = self._adapters.get(entry.adapter)
-            if cls is None:
-                if entry.id not in self.missing:
-                    self.missing.append(entry.id)
-                    log.warning("источник «%s»: нет адаптера «%s», пропущен", entry.id, entry.adapter)
-                continue
-            built.append(cls(entry, bus=self.bus, key=self.keys.get(entry.needs_key) if entry.needs_key else None))
-        return built
+        return [ad for ad in (self._make(e) for e in self.entries(level)) if ad is not None]
+
+    def engine(self, source_id: str) -> Optional[SourceAdapter]:
+        """Включённый источник по id (для `engine_queries.via`); нет или выключен — None."""
+        for entry in self._entries:
+            if entry.id == source_id and entry.enabled:
+                return self._make(entry)
+        return None
 
     def allowed_domains(self) -> List[str]:
         """Домены для белого списка netsafe: включённые источники, сайты производителей, хосты PDF."""

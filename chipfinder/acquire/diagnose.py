@@ -22,6 +22,7 @@ from .registry import ADAPTERS, Registry, load_builtin
 
 log = logging.getLogger("chipfinder.acquire.diagnose")
 TEST_PART = "NE555"
+TEST_CODE = "A6W"            # для источников, которым нужен код маркировки SMD
 SAVE_BYTES = 150 * 1024
 STATUSES = ("ok", "empty", "captcha", "no_key", "quota", "error", "parse_error", "no_adapter", "disabled")
 BAD = ("captcha", "quota", "error", "parse_error", "no_adapter")
@@ -50,13 +51,15 @@ class Recorder:
 
 
 def _status_of(events: List[Any]) -> str:
-    for e in reversed(events):
-        if e.key in _BY_EVENT:
-            return _BY_EVENT[e.key]
-        if e.key.endswith(".empty"):
-            return "empty"
-        if e.key.endswith(".found") or e.key.endswith(".found_pdf"):
-            return "ok"
+    """Итог по всем событиям источника (у `engine_queries` их несколько): найдено > пусто > капча > лимит > ошибка."""
+    keys = [e.key for e in events]
+    if any(k.endswith(".found") or k.endswith(".found_pdf") for k in keys):
+        return "ok"
+    if any(k.endswith(".empty") for k in keys):
+        return "empty"
+    for key in ("engine.captcha", "engine.quota", "engine.error", "engine.no_key"):
+        if key in keys:
+            return _BY_EVENT[key]
     return "error"            # события не пришли: адаптер ничего не сообщил
 
 
@@ -97,10 +100,13 @@ def diagnose_adapters(sources_path: Optional[str], http: Any, keys: Optional[Dic
         ad = cls(entry, bus=bus, key=reg.keys.get(entry.needs_key) if entry.needs_key else None)
         rec = Recorder(http)
         text = part + " datasheet pdf" if ad.family == "engine" else part
+        kind = "smd" if any("{code}" in t and "{part}" not in t for t in entry.queries) else "part"
+        if kind == "smd":
+            text = TEST_CODE
         del events[:]
         t0 = time.time()
         try:
-            leads = ad.search(Query("en", text, "part"), rec)
+            leads = ad.search(Query("en", text, kind), rec)
             row["status"] = _status_of(events)
         except Exception as e:  # noqa — адаптер не должен падать; если упал, вёрстка не разобрана
             log.warning("диагностика: %s упал: %s", entry.id, e)
