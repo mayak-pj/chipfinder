@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlsplit
 from ..core.netsafe import HttpStatus, NetBlocked, host_of
 from .events import EventBus
 from .models import FetchResult, Lead
+from .netdiag import BlockTracker, failure_class
 
 log = logging.getLogger("chipfinder.acquire.fetch")
 ATTEMPTS = 3
@@ -27,17 +28,6 @@ def _file_name(url: str) -> str:
     return name[:80]
 
 
-def _classify(exc: Exception) -> str:
-    """Класс неудачи по §4.11 (грубо; полный классификатор — netdiag)."""
-    if isinstance(exc, HttpStatus):
-        if exc.status in (403, 429):
-            return "site_protected"
-        return "transient" if exc.status >= 500 else ""
-    if isinstance(exc, NetBlocked):
-        return "not_whitelisted" if "списк" in str(exc) else ""
-    return "transient"
-
-
 def _retryable(exc: Exception) -> bool:
     if isinstance(exc, HttpStatus):
         return exc.status >= 500
@@ -46,8 +36,10 @@ def _retryable(exc: Exception) -> bool:
 
 def fetch_to_quarantine(http: Any, lead: Lead, bus: Optional[EventBus] = None, referer: str = "",
                         attempts: int = ATTEMPTS, pause: float = PAUSE_SEC,
-                        sleep: Callable[[float], None] = time.sleep) -> FetchResult:
-    """Скачивает `lead.url` в карантин. Не бросает исключений: итог в `FetchResult`."""
+                        sleep: Callable[[float], None] = time.sleep,
+                        tracker: Optional[BlockTracker] = None) -> FetchResult:
+    """Скачивает `lead.url` в карантин. Не бросает исключений: итог в `FetchResult`.
+    `tracker` — счёт сетевых неудач по доменам (§4.11); без него разовая неудача сети — `transient`."""
     emit = bus.emit if bus is not None else (lambda *a, **k: None)
     site = host_of(lead.url)
     name = _file_name(lead.url)
@@ -64,10 +56,12 @@ def fetch_to_quarantine(http: Any, lead: Lead, bus: Optional[EventBus] = None, r
                 sleep(pause)
                 continue
             break
+        if tracker is not None:
+            tracker.ok(site)
         emit("fetch.done", file=name, size=size, **kw)
         emit("quarantine.placed", **kw)
         return FetchResult(ok=True, path_in_quarantine=path, sha256=sha, size=size,
                            content_type="application/pdf", final_url=final)
     emit("fetch.failed", file=name, site=site, **kw)
     text = str(error) or type(error).__name__
-    return FetchResult(ok=False, error=text, final_url=lead.url, failure_class=_classify(error))
+    return FetchResult(ok=False, error=text, final_url=lead.url, failure_class=failure_class(error, tracker, site))

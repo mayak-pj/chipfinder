@@ -60,9 +60,11 @@ class NetBlocked(Exception):
 class HttpStatus(NetBlocked):
     """Сервер ответил кодом ≥ 400 (для решения «повторять или нет»)."""
 
-    def __init__(self, status: int) -> None:
+    def __init__(self, status: int, headers: Optional[Dict[str, str]] = None, body: bytes = b"") -> None:
         super().__init__("HTTP %d" % status)
         self.status = status
+        self.headers = dict(headers or {})      # заголовки и начало тела — для классификатора неудач (§4.11)
+        self.body = bytes(body[:65536])
 
 
 class NotPdf(NetBlocked):
@@ -234,7 +236,7 @@ class SafeHttp:
                                                   accept="text/html,application/xhtml+xml,*/*;q=0.8",
                                                   referer=referer)
         if status >= 400:
-            raise NetBlocked("HTTP %d" % status)
+            raise HttpStatus(status, hdrs, body)
         ctype = hdrs.get("content-type", "")
         enc = "utf-8"
         m = re.search(r"charset=([\w-]+)", ctype, re.I)
@@ -256,7 +258,7 @@ class SafeHttp:
         import json
         final, hdrs, body, status = self._request(url, self.max_html, accept="application/json")
         if status >= 400:
-            raise NetBlocked("HTTP %d" % status)
+            raise HttpStatus(status, hdrs, body)
         return json.loads(body.decode("utf-8", errors="replace"))
 
     def fetch(self, url: str, max_bytes: int = 512 * 1024, timeout: Optional[float] = None) -> Dict:
@@ -289,7 +291,7 @@ class SafeHttp:
         final, hdrs, body, status = self._request(url, self.max_pdf,
                                                   accept="application/pdf,*/*;q=0.5", referer=referer)
         if status >= 400:
-            raise HttpStatus(status)
+            raise HttpStatus(status, hdrs, body)
         head = body[:1024]
         if b"%PDF-" not in head:
             raise NotPdf("Это не PDF (сервер вернул %s)" % hdrs.get("content-type", "?"))

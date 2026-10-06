@@ -19,9 +19,10 @@ from html.parser import HTMLParser
 from typing import Any, Callable, List, Optional, Tuple
 from urllib.parse import parse_qsl, urldefrag, urljoin, urlsplit
 
-from ..core.netsafe import NetBlocked, host_of
+from ..core.netsafe import host_of
 from .events import EventBus, search_language
 from .models import Lead
+from .netdiag import BlockTracker, failure_class
 from .rank import normalize_url
 
 log = logging.getLogger("chipfinder.acquire.crawl")
@@ -30,7 +31,6 @@ MAX_PAGES = 6
 _FRAME_ATTR = {"iframe": "src", "embed": "src", "object": "data"}
 _HINT = re.compile(r"datasheet|data[\s_-]?sheet|download|\bpdf\b|\bspec|manual|документац|даташит|скачать|описани"
                    r"|数据手册|规格书|下载|资料|手册", re.I)
-_HTTP_STATUS = re.compile(r"HTTP (\d{3})")
 
 
 class _Links(HTMLParser):
@@ -118,18 +118,6 @@ def page_links(html: str, base: str) -> Tuple[List[Tuple[str, str]], List[str]]:
     return pdfs, pages
 
 
-def _failure_class(exc: Exception) -> str:
-    """Класс неудачи по §4.11 (грубо; полный классификатор — netdiag)."""
-    if isinstance(exc, NetBlocked):
-        text = str(exc)
-        m = _HTTP_STATUS.search(text)
-        if m:
-            status = int(m.group(1))
-            return "site_protected" if status in (403, 429) else "transient" if status >= 500 else ""
-        return "not_whitelisted" if "списк" in text else ""
-    return "transient"
-
-
 def _blocked_site(exc: Exception, url: str) -> str:
     """Домен из сообщения белого списка (после редиректа он не совпадает с адресом страницы)."""
     m = re.search(r"списке: (\S+)", str(exc))
@@ -138,10 +126,11 @@ def _blocked_site(exc: Exception, url: str) -> str:
 
 def crawl(http: Any, lead: Lead, bus: Optional[EventBus] = None, max_depth: int = MAX_DEPTH,
           max_pages: int = MAX_PAGES, cancelled: Callable[[], bool] = lambda: False,
-          force: bool = False) -> List[Lead]:
+          force: bool = False, tracker: Optional[BlockTracker] = None) -> List[Lead]:
     """Ссылки на PDF со страницы `lead.url` и вложенных страниц. `snippet` найденной ссылки — адрес страницы,
     где она стояла (нужен как Referer при скачивании); источник, уровень, запрос и язык — от `lead`.
-    `force` — открыть как страницу, даже если адрес похож на PDF (сервер вместо файла отдал HTML)."""
+    `force` — открыть как страницу, даже если адрес похож на PDF (сервер вместо файла отдал HTML).
+    `tracker` — счёт сетевых неудач по доменам (§4.11); без него разовая неудача сети — `transient`."""
     if not force and (lead.kind == "pdf" or urlsplit(lead.url).path.lower().endswith(".pdf")):
         return [lead]
     if cancelled():
@@ -164,7 +153,7 @@ def crawl(http: Any, lead: Lead, bus: Optional[EventBus] = None, max_depth: int 
         except Exception as e:       # noqa: BLE001 — сеть может бросить что угодно
             log.info("обход %s: %s", url, e)
             if depth == 1:           # стартовая страница недоступна — причина идёт в ход поиска
-                cls = _failure_class(e)
+                cls = failure_class(e, tracker, site)
                 if cls:
                     emit("access." + cls, site=_blocked_site(e, url) if cls == "not_whitelisted" else site, **kw)
                 else:
@@ -172,6 +161,8 @@ def crawl(http: Any, lead: Lead, bus: Optional[EventBus] = None, max_depth: int 
                 return []
             continue
         visited.add(normalize_url(final))
+        if tracker is not None:
+            tracker.ok(host_of(final))
         if html.lstrip()[:5] == "%PDF-":       # «страница» оказалась самим документом
             pdfs, pages = [(final, lead.title)], []
         else:
