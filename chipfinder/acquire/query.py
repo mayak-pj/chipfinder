@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence
@@ -74,6 +76,48 @@ def is_smd_code(raw: str) -> bool:
     return 0 < len(s) <= _SMD_MAX_LEN and any(c.isdigit() for c in s) and any(c.isalpha() for c in s)
 
 
+_PREFIX_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "maker_prefixes.json")
+_prefix_cache: Dict[str, dict] = {}
+
+
+def load_prefix_table(path: Optional[str] = None) -> dict:
+    """Таблица префиксов производителей (data/maker_prefixes.json); нет файла или он сломан — пустая."""
+    path = path or _PREFIX_FILE
+    if path not in _prefix_cache:
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = {}
+        _prefix_cache[path] = data if isinstance(data, dict) else {}
+    return _prefix_cache[path]
+
+
+def prefixed_parts(base: str, maker: str = "", table: Optional[dict] = None) -> List[str]:
+    """25Q512JV → [W25Q512JV, GD25Q512JV, XM25Q512JV]: возможные полные партномера усечённой маркировки.
+    Производитель с фото сужает выбор; не нашёлся в таблице — берутся все варианты ряда (не больше `max_variants`)."""
+    table = load_prefix_table() if table is None else table
+    base = _compact(base)
+    if not base:
+        return []
+    for rule in table.get("rules", []):
+        try:
+            hit = re.search(rule["pattern"], base)
+        except (re.error, KeyError, TypeError):
+            continue
+        if not hit:
+            continue
+        variants = rule.get("variants", [])
+        want = (maker or "").strip().lower()
+        if want:
+            narrowed = [v for v in variants
+                        if want == v.get("maker", "").lower() or want in [a.lower() for a in v.get("aliases", [])]]
+            variants = narrowed or variants
+        limit = int(table.get("max_variants", 3) or 3)
+        return [v["prefix"] + base for v in variants[:limit] if v.get("prefix")]
+    return []
+
+
 @dataclass
 class Query:
     lang: str
@@ -123,8 +167,10 @@ def mentions(keys: Sequence[str], *texts: str) -> bool:
 
 
 def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[bool] = None,
-                 templates: Optional[Dict[str, Dict[str, List[str]]]] = None) -> List[Query]:
-    """Запросы по языкам в порядке `langs`. Короткий код (или smd=True) — запросы маркировки."""
+                 templates: Optional[Dict[str, Dict[str, List[str]]]] = None, maker: str = "",
+                 prefixes: Optional[dict] = None) -> List[Query]:
+    """Запросы по языкам в порядке `langs`. Короткий код (или smd=True) — запросы маркировки.
+    Усечённая маркировка (`25Q512JVFQ`) — ещё по запросу на вариант с префиксом производителя; `maker` с фото сужает его."""
     tpl = templates or TEMPLATES
     order = [l for l in (langs or DEFAULT_ORDER) if l in DEFAULT_ORDER] or list(DEFAULT_ORDER)
     as_smd = is_smd_code(raw) if smd is None else smd
@@ -146,6 +192,7 @@ def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[
     if not part:
         return out
     fam = family(raw)
+    full = prefixed_parts(part, maker, prefixes)
     for lang in order:
         for t in tpl["part"].get(lang, []):
             add(lang, t.format(part=part), "part", part)
@@ -153,4 +200,7 @@ def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[
             first = tpl["part"].get(lang, [])[:1]
             for t in first:
                 add(lang, t.format(part=fam), "family", fam)
+        for first in tpl["part"].get(lang, [])[:1]:   # варианты с префиксом производителя
+            for p in full:
+                add(lang, first.format(part=p), "part", p)
     return out

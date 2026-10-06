@@ -107,3 +107,34 @@ def test_relevance_keys(query, keys):
 ])
 def test_mentions(keys, texts, hit):
     assert mentions(keys, *texts) is hit
+
+
+def _parts(qs, lang="en"):
+    return [q.part for q in qs if q.lang == lang]
+
+
+def test_prefix_variants_truncated_marking():
+    qs = plan_queries("25Q512JVFQ", langs=["en"])
+    assert _parts(qs) == ["25Q512JVFQ", "25Q512", "W25Q512JVFQ", "GD25Q512JVFQ", "XM25Q512JVFQ"]
+    assert "W25Q512JVFQ datasheet pdf" in _texts(qs, "en")
+    assert relevance_keys(qs[2]) == ["W25Q512JVFQ", "W25Q512"]
+
+
+def test_prefix_variants_all_languages_and_maker_narrows():
+    assert [q.text for q in plan_queries("25Q64", langs=["zh"]) if q.text.startswith("W")] == [
+        "W25Q64 数据手册"]
+    qs = plan_queries("25Q64", langs=["en"], maker="GigaDevice")
+    assert _parts(qs) == ["25Q64", "GD25Q64"]
+    assert _parts(plan_queries("25Q64", langs=["en"], maker="Winbond"))[-1] == "W25Q64"
+    assert _parts(plan_queries("25Q64", langs=["en"], maker="Unknown"))[-1] == "XM25Q64"   # не нашли — все варианты
+
+
+def test_prefix_variants_24c02():
+    assert _parts(plan_queries("24C02", langs=["en"])) == ["24C02", "AT24C02", "M24C02", "CAT24C02"]
+
+
+def test_no_prefix_when_already_full_or_unknown():
+    assert _parts(plan_queries("W25Q64JVSIQ", langs=["en"])) == ["W25Q64JV", "W25Q64"]
+    assert _parts(plan_queries("NE555", langs=["en"])) == ["NE555"]
+    assert _parts(plan_queries("A6W", langs=["en"])) == ["A6W"]
+    assert _parts(plan_queries("25Q64", langs=["en"], prefixes={})) == ["25Q64"]

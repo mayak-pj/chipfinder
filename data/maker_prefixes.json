@@ -1,0 +1,29 @@
+{
+  "_readme": "Усечённая маркировка: на корпусе часто нет буквы производителя (25Q512JVFQ вместо W25Q512JV). Правила сверху вниз, срабатывает первое подходящее. pattern — регулярное выражение для основы партномера (без префикса); variants — возможные префиксы (в порядке вероятности) и производитель; aliases — как производитель может быть назван на фото. Файл можно дополнять самостоятельно.",
+  "max_variants": 3,
+  "rules": [
+    {"pattern": "^25Q\\d", "variants": [
+      {"prefix": "W", "maker": "Winbond", "aliases": ["winbond", "华邦"]},
+      {"prefix": "GD", "maker": "GigaDevice", "aliases": ["gigadevice", "giga device", "兆易创新", "兆易"]},
+      {"prefix": "XM", "maker": "XMC", "aliases": ["xmc", "武汉新芯", "新芯"]},
+      {"prefix": "BY", "maker": "Boya", "aliases": ["boya", "博雅"]},
+      {"prefix": "EN", "maker": "Eon", "aliases": ["eon", "宜扬"]}
+    ]},
+    {"pattern": "^25(LC|AA)?\\d", "variants": [
+      {"prefix": "AT", "maker": "Microchip", "aliases": ["microchip", "atmel"]}
+    ]},
+    {"pattern": "^24(C|LC|AA|FC)\\d", "variants": [
+      {"prefix": "AT", "maker": "Microchip", "aliases": ["microchip", "atmel"]},
+      {"prefix": "M", "maker": "STMicroelectronics", "aliases": ["stmicroelectronics", "st", "意法半导体"]},
+      {"prefix": "CAT", "maker": "onsemi", "aliases": ["onsemi", "on semiconductor", "catalyst"]},
+      {"prefix": "GT", "maker": "Giantec", "aliases": ["giantec", "聚辰"]}
+    ]},
+    {"pattern": "^29F\\d", "variants": [
+      {"prefix": "AM", "maker": "AMD/Spansion", "aliases": ["amd", "spansion"]},
+      {"prefix": "SST", "maker": "Microchip", "aliases": ["sst", "microchip"]}
+    ]},
+    {"pattern": "^8\\d?C\\d", "variants": [
+      {"prefix": "AT", "maker": "Microchip", "aliases": ["microchip", "atmel"]}
+    ]}
+  ]
+}
