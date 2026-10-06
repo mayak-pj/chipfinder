@@ -5,6 +5,8 @@
 печатается история с метками EN/中文/RU и счётчики. Если вывод идёт не в терминал (файл, журнал CI) —
 каждое событие печатается отдельной строкой.
 
+    python tools/search_cli.py W25Q64JVSIQ     настоящий поиск: источники, скачивание, проверка, итог
+    python tools/search_cli.py NE555P --maker "Texas Instruments" --package DIP-8 --everywhere
     python tools/search_cli.py --demo          показать пример поиска из архитектуры
     python tools/search_cli.py --demo --ru     история с русским переводом каждой строки
 """
@@ -158,8 +160,52 @@ def demo(out, pause: float, translate: bool) -> None:
     observer.close()
 
 
+CLASS_RU = {"site_protected": u"сайт защищён от программ — можно скачать вручную",
+            "network_blocked": u"нет доступа из этой сети", "not_whitelisted": u"вне белого списка программы",
+            "transient": u"временный сбой", "unknown": u"причина не ясна"}
+
+
+def live(part: str, maker: str, package: str, everywhere: bool, out, translate: bool) -> int:
+    """Полный поиск по настройкам программы; Ctrl+C — отмена поиска, а не обрыв программы."""
+    import signal
+
+    from chipfinder.acquire.models import PhotoContext
+    from chipfinder.acquire.orchestrator import from_context
+    from chipfinder.core.config import load_config, setup_logging
+    from chipfinder.core.interfaces import Context
+    from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+
+    cfg = load_config(ROOT)
+    ctx = Context(cfg, ROOT, setup_logging(ROOT, cfg))
+    db = SQLiteLocalDB({}, ctx)
+    bus = EventBus()
+    observer = ConsoleObserver(out, translate=translate)
+    bus.subscribe(observer)
+    orch = from_context(ctx, bus, db=db)
+    previous = signal.signal(signal.SIGINT, lambda *a: orch.cancel())
+    try:
+        res = orch.search(PhotoContext(part=part, manufacturer=maker, package=package), everywhere=everywhere)
+    finally:
+        signal.signal(signal.SIGINT, previous)
+        observer.close()
+        db.close()
+    if res.path:
+        out.write(u"файл: %s\n" % res.path)
+    seen = set()
+    for f in res.failures:
+        if f["cls"] != "transient" and (f["site"], f["cls"]) not in seen:
+            seen.add((f["site"], f["cls"]))
+            out.write(u"  %s — %s%s\n" % (f["site"], CLASS_RU.get(f["cls"], f["cls"]),
+                                           u": " + f["url"] if f["url"] else ""))
+    return 0 if res.status in ("confirmed", "probable") else 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Консольный наблюдатель поиска ChipFinder")
+    ap.add_argument("part", nargs="?", help="партномер или код маркировки: настоящий поиск")
+    ap.add_argument("--maker", default="", help="производитель, если известен")
+    ap.add_argument("--package", default="", help="корпус, если известен (SOIC-8)")
+    ap.add_argument("--everywhere", action="store_true", help="искать везде: не останавливаться на подтверждённом")
     ap.add_argument("--demo", action="store_true", help="показать пример поиска (без сети)")
     ap.add_argument("--fast", action="store_true", help="без пауз между событиями")
     ap.add_argument("--ru", action="store_true", help="под каждой строкой истории — русский перевод")
@@ -169,11 +215,13 @@ def main(argv=None) -> int:
             sys.stdout.reconfigure(errors="replace")
         except (ValueError, OSError):
             pass
-    if not args.demo:
-        print("Поиск появится на шаге оркестратора; пока доступен пример: --demo")
+    if args.demo:
+        demo(sys.stdout, 0.0 if args.fast else 0.5, args.ru)
         return 0
-    demo(sys.stdout, 0.0 if args.fast else 0.5, args.ru)
-    return 0
+    if not args.part:
+        ap.print_help()
+        return 0
+    return live(args.part, args.maker, args.package, args.everywhere, sys.stdout, args.ru)
 
 
 if __name__ == "__main__":

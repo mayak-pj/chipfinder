@@ -65,6 +65,7 @@
 
   "search.cancelled": "用户已取消搜索",
   "search.budget": "搜索已停止：{seconds} 秒的时间限额已用完",
+  "search.limit": "搜索已停止：限额已用完 — {queries} 次查询，{downloads} 次下载",
 
   "result.confirmed": "结果：已确认 — 已保存到资料库（{queries} 次查询，{seconds} 秒）",
   "result.probable": "结果：很可能正确 — 已保存，需要查看（{queries} 次查询，{seconds} 秒）",

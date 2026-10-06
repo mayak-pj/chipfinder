@@ -65,6 +65,7 @@
 
   "search.cancelled": "Search cancelled by the user",
   "search.budget": "Search stopped: the time limit of {seconds} s is used up",
+  "search.limit": "Search stopped: the limit is used up — {queries:query|queries}, {downloads:download|downloads}",
 
   "result.confirmed": "Result: CONFIRMED — saved to the library ({queries:query|queries}, {seconds} s)",
   "result.probable": "Result: PROBABLE — saved, needs a look ({queries:query|queries}, {seconds} s)",
