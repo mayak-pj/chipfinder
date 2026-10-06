@@ -40,6 +40,7 @@
   "fetch.failed": "Download of {file} from {site} failed",
 
   "quarantine.placed": "File placed in quarantine",
+  "manual.start": "Checking your own PDF: {file}",
 
   "validate.ok": "File check: format ✔ safe ✔ {pages:page|pages}, has text",
   "validate.scan": "File check: format ✔ safe ✔ {pages:page|pages}, scan without text",

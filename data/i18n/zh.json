@@ -40,6 +40,7 @@
   "fetch.failed": "从 {site} 下载 {file} 失败",
 
   "quarantine.placed": "文件已放入隔离区",
+  "manual.start": "检查自备PDF：{file}",
 
   "validate.ok": "文件检查：格式 ✔ 安全 ✔ {pages} 页，含文本",
   "validate.scan": "文件检查：格式 ✔ 安全 ✔ {pages} 页，扫描件，无文本",

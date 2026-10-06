@@ -71,6 +71,7 @@ class AcquireStore:
             "final_url": fetch.final_url if fetch else "",
             "source": (lead.source_id if lead else "") or "web",
             "level": lead.level if lead else "",
+            "manual": bool(lead and lead.source_id == "manual"),
             "sha256": sha, "size": size,
             "pages": facts.pages if facts else 0,
             "doc_type": facts.doc_type if facts else "",

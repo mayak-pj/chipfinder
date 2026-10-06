@@ -42,7 +42,7 @@ KEYS = {
     "market.search": "", "market.found": "found", "market.empty": "empty",
     "crawl.found": "found", "crawl.empty": "empty",
     "fetch.start": "", "fetch.progress": "", "fetch.done": "ok", "fetch.failed": "fail",
-    "quarantine.placed": "ok",
+    "quarantine.placed": "ok", "manual.start": "",
     "validate.ok": "ok", "validate.scan": "ok", "validate.not_pdf": "fail", "validate.encrypted": "fail",
     "validate.active_content": "fail", "validate.too_big": "fail", "validate.damaged": "fail",
     "verify.result": "ok", "verify.rejected": "fail",
