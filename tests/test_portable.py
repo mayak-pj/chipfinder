@@ -129,3 +129,15 @@ def test_ci_ppocr_answers_match_samples():
     for fn in ci_ppocr.ANSWERS:
         assert os.path.isfile(os.path.join(bp.ROOT, "tests", "samples", fn))
     assert ci_ppocr.MIN_READ <= len(ci_ppocr.ANSWERS)
+
+
+def test_build_ships_photos_folder_and_visit_guide(tmp_path):
+    """Выезд 2: папки «фото» в архиве не было, а инструкция была в две строки."""
+    bp.make_visit_files(str(tmp_path))
+    assert (tmp_path / "фото" / bp.PHOTOS_NOTE).is_file()
+    guide = (tmp_path / bp.VISIT_GUIDE).read_text(encoding="utf-8-sig")
+    for word in ("ДО ВЫЕЗДА", "my_test/ocr", "фото", "Проверка на работе.bat", "отчёт_", "my_reports", "HEIC"):
+        assert word in guide
+    bat = bp.BATS["Проверка на работе.bat"]
+    assert "%~dp0фото" in bat and "5-15 минут" not in bat
+    bp.bat_bytes(bat)        # текст укладывается в кодировку cmd.exe

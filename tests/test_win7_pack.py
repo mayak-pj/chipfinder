@@ -167,3 +167,60 @@ def test_downloads_report_and_offline(tmp_path):
 
     assert downloads.run(rc.Context(str(tmp_path), str(tmp_path)))["status"] == "fail"      # нет data/sources.json
     assert "downloads" in rc.ORDER and rc.ORDER.index("downloads") > rc.ORDER.index("adapters")
+
+
+def _img(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+
+def test_photos_found_next_to_program_in_tmp_and_in_subfolders(tmp_path):
+    """Выезд 2: папку «фото» клали в tmp/ — проверка её не видела."""
+    app = tmp_path / "Моя программа"
+    app.mkdir()
+    assert rc.find_photos(str(app))[0] == str(app / "фото")           # нигде нет — основная папка
+    _img(app / "tmp" / "фото" / "Вырезанные" / "W25Q64.JPG")
+    path, rows = rc.find_photos(str(app))
+    assert path == str(app / "tmp" / "фото") and rc.Context(str(app), str(tmp_path)).photos_dir == path
+    _img(app / "фото" / "NE555.png")
+    assert rc.find_photos(str(app))[0] == str(app / "фото")           # рядом с программой — главнее
+
+
+def test_photos_report_says_why_files_are_not_seen(tmp_path):
+    app = tmp_path / "app"
+    (app / "фото").mkdir(parents=True)
+    (app / "фото" / "IMG_1.HEIC").write_bytes(b"x")
+    (app / "фото" / "ПОЛОЖИТЕ ФОТО СЮДА.txt").write_text("x", encoding="utf-8")
+    text = "\n".join(rc.photos_text(rc.find_photos(str(app))[1]))
+    assert "картинок 0" in text and ".heic — 1" in text and ".txt" not in text
+    assert "## Где искали фото" in rc.report_md([], [], rc.photos_text(rc.find_photos(str(app))[1]))
+
+
+def test_ask_for_photos_waits_until_user_puts_them(tmp_path):
+    app = tmp_path / "app"
+    app.mkdir()
+    said, opened, asked = [], [], []
+
+    def ask(prompt):
+        asked.append(prompt)
+        if len(asked) == 2:
+            _img(app / "фото" / "LM358.jpg")
+        return ""
+
+    assert rc.ask_for_photos(str(app), ask=ask, log=said.append, opener=opened.append) == 1
+    assert opened == [str(app / "фото")] * 2 and any(str(app / "фото") in s for s in said)
+    assert any("1 шт." in s for s in said)
+
+
+def test_ask_for_photos_gives_up_and_survives_closed_input(tmp_path):
+    app = tmp_path / "app"
+    app.mkdir()
+    asked = []
+    assert rc.ask_for_photos(str(app), ask=lambda p: asked.append(p) or "", log=lambda s: None,
+                             opener=lambda p: None) == 0
+    assert len(asked) == rc.PHOTO_ASK
+
+    def closed(prompt):
+        raise EOFError
+
+    assert rc.ask_for_photos(str(app), ask=closed, log=lambda s: None, opener=lambda p: None) == 0

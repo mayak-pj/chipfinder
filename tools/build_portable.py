@@ -80,7 +80,11 @@ BATS = {
         '@echo off\n'
         'rem Проверочный набор: один запуск -> один файл отчёт_<дата>.zip в этой папке\n'
         'cd /d "%~dp0"\n' + _ENV +
-        'echo Идёт проверка, подождите 5-15 минут. Окно программы мигнёт - это нормально.\n'
+        'echo Проверка идёт до полутора часов. Окно программы мигнёт - это нормально.\n'
+        'echo Фото чипов для проверки распознавания должны лежать в папке:\n'
+        'echo   %~dp0фото\n'
+        'echo Не закрывайте это окно до слова "Готово".\n'
+        'echo.\n'
         '"%~dp0python\\python.exe" "%~dp0checks\\run_checks.py"\n'
         'echo.\n'
         'type "%~dp0checks\\ЧТО СДЕЛАТЬ.txt"\n'
@@ -131,6 +135,25 @@ def check_files():
         if fn.endswith((".py", ".txt")) and not fn.startswith("test_"):
             out.append((os.path.join(CHECKS_SRC, fn), "checks/" + fn))
     return out
+
+
+PHOTOS_DIR = "фото"
+PHOTOS_NOTE = "ПОЛОЖИТЕ ФОТО СЮДА.txt"
+VISIT_GUIDE = "ИНСТРУКЦИЯ ДЛЯ ВЫЕЗДА.txt"
+
+
+def make_visit_files(app):
+    """Папка «фото» с запиской (в архиве она есть всегда — на выезде 2 её не было) и инструкция в корне сборки."""
+    photos = os.path.join(app, PHOTOS_DIR)
+    os.makedirs(photos, exist_ok=True)
+    with open(os.path.join(photos, PHOTOS_NOTE), "w", encoding="utf-8-sig", newline="\r\n") as f:
+        f.write("Сюда кладутся фото чипов для проверки распознавания («Проверка на работе.bat»).\n"
+                "Формат: JPG или PNG (HEIC с телефона не читается). Подпапки можно.\n"
+                "Имя файла = правильная маркировка, например: W25Q64JVSIQ.jpg\n")
+    with open(os.path.join(CHECKS_SRC, "ЧТО СДЕЛАТЬ.txt"), encoding="utf-8") as f:
+        guide = f.read()
+    with open(os.path.join(app, VISIT_GUIDE), "w", encoding="utf-8-sig", newline="\r\n") as f:
+        f.write(guide)
 
 
 def bat_bytes(text):
@@ -262,6 +285,7 @@ def build(out_dir, with_tesseract=True, with_zip=True, with_msvc=True):
     for name, text in BATS.items():
         with open(os.path.join(app, name), "wb") as f:
             f.write(bat_bytes(text))
+    make_visit_files(app)
     with open(os.path.join(app, "build_info.txt"), "w", encoding="utf-8", newline="\r\n") as f:
         f.write("commit: %s\npython: 3.8.10 embeddable amd64\ntesseract: %s\npackages:\n  %s\n"
                 % (git_commit(), TESS_VERSION if with_tesseract else "нет", "\n  ".join(reqs)))

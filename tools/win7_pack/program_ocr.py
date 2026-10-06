@@ -72,7 +72,7 @@ def run(ctx):
     items = helper.collect(photos) if os.path.isdir(photos) else []
     if not items:
         os.makedirs(photos, exist_ok=True)
-        return {"status": "skip", "note": "папка «фото» пуста (см. проверку ppocr_check)"}
+        return {"status": "skip", "note": "нет картинок в папке %s (см. проверку ppocr_check)" % photos}
     if ctx.app_dir not in sys.path:
         sys.path.insert(0, ctx.app_dir)
     try:

@@ -15,7 +15,7 @@ import time
 import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
+IMG_EXT = (".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".tif", ".tiff", ".webp")
 ROTATIONS = (0, 90, 180, 270)
 CYR = re.compile("[Ѐ-ӿ]")
 # (имя, text_score, det_box_thresh, det_unclip_ratio); None — параметры библиотеки по умолчанию
@@ -237,9 +237,9 @@ def run(ctx):
     photos = ctx.photos_dir
     if not os.path.isdir(photos) or not collect(photos):
         os.makedirs(photos, exist_ok=True)
-        ctx.todo("Положите в папку «фото» рядом с программой несколько снимков чипов (лучше вырезки с одной "
-                 "строкой маркировки, файл назван этой строкой) и запустите проверку ещё раз.")
-        return {"status": "skip", "note": "папка «фото» пуста", "libs": diag}
+        ctx.todo("Нет фото для проверки распознавания. Положите снимки чипов (JPG или PNG, лучше вырезки с одной "
+                 "строкой маркировки, файл назван этой строкой) в папку %s и запустите проверку ещё раз." % photos)
+        return {"status": "skip", "note": "нет картинок в папке %s" % photos, "libs": diag, "photos_dir": photos}
     try:
         engines = make_engines()
     except BaseException:  # noqa — полный текст ошибки загрузки — в отчёт
