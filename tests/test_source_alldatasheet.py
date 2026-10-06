@@ -138,3 +138,9 @@ def test_network_error_and_http_error(tmp_path):
 def test_is_blocked_does_not_trigger_on_normal_pages():
     assert not is_blocked(200, read("search.html")) and not is_blocked(404, read("empty.html"))
     assert is_blocked(200, read("cloudflare.html"))
+    # выезд 2: обычная страница FindChips подключает виджет Cloudflare для формы входа — это не проверка
+    widget = "<html><title>NE555 Price and Stock Results</title><script>s.setAttribute('src', " \
+             "\"https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit\"); function removeCaptcha() {}" \
+             "</script><table><tr><td>NE555P</td></tr></table></html>"
+    assert not is_blocked(200, widget)
+    assert is_blocked(403, "<title>Just a moment...</title><div id='challenge-error-text'>Enable JavaScript</div>")

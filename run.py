@@ -20,7 +20,8 @@ def main():
         return 1
     if "--selftest" in sys.argv:
         import pytest
-        return int(pytest.main(["-q", "-m", "not live", os.path.join(d, "tests")]))
+        extra = sys.argv[sys.argv.index("--selftest") + 1:]     # например -vv --deselect=… (проверка selftest)
+        return int(pytest.main(["-q", "-m", "not live"] + extra + [os.path.join(d, "tests")]))
     from chipfinder.gui.main_window import main as gui_main
     return gui_main(d)
 

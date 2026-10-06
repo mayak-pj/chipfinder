@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import sys
 
 from chipfinder.acquire import diagnose
 from chipfinder.core.netsafe import SafeHttp
@@ -77,6 +78,27 @@ def test_real_sources_json_every_source_has_a_row(tmp_path):
     assert all(r["status"] in diagnose.STATUSES for r in rows)
 
 
+MAKERS = {"version": 2, "levels": [{"id": "maker"}], "sources": [
+    {"id": "esp", "adapter": "maker_url", "name": "Espressif", "level": "maker", "lang": "en",
+     "domains": ["espressif.example"], "prefixes": ["^ESP"], "urls": ["https://espressif.example/ds/{part_lower}.pdf"]},
+    {"id": "rare", "adapter": "maker_url", "name": "Rare", "level": "maker", "lang": "en",
+     "domains": ["rare.example"], "prefixes": ["^ZZZ"], "urls": ["https://rare.example/{part}.pdf"]},
+]}
+
+
+def test_maker_gets_a_chip_it_takes_and_is_not_reported_as_blocked(tmp_path):
+    """Выезд 2: сайты производителей молча пропускали NE555 и попадали в список «не отвечают»."""
+    fake = FakeHttp()
+    http = SafeHttp({"min_interval_sec": 0}, str(tmp_path), logging.getLogger("t"), transport=fake)
+    http.add_allowed(["espressif.example", "rare.example"])
+    fake.add("https://espressif.example/ds/esp8266ex.pdf", b"%PDF-1.4 x", content_type="application/pdf")
+    rows = {r["id"]: r for r in diagnose.diagnose_adapters(None, http, data=MAKERS)}
+    assert rows["esp"]["status"] == "ok" and rows["esp"]["part"] == "ESP8266EX" and rows["esp"]["pdfs"] == 1
+    assert rows["rare"]["status"] == "not_applicable" and rows["rare"]["detail"]
+    assert diagnose.admin_domains(list(rows.values())) == []
+    assert not rows["rare"]["saved"] and rows["rare"]["seconds"] == 0.0     # в сеть не ходили
+
+
 def test_cancel_stops(tmp_path):
     class C:
         cancelled = True
@@ -86,7 +108,8 @@ def test_cancel_stops(tmp_path):
 
 def test_adapters_dialog_offscreen(tmp_path):
     import pytest
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    if sys.platform != "win32":     # на Win7 модуль offscreen обрушил самопроверку (выезд 2); там окно — настоящее
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     pytest.importorskip("PyQt5")
     from PyQt5.QtWidgets import QApplication
     from chipfinder.gui.dialogs import ADAPTER_STATUS, AdaptersDialog

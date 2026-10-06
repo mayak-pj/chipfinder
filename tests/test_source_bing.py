@@ -77,3 +77,12 @@ def test_empty_and_captcha(tmp_path):
     assert ad.search(Q, http) == [] and events[-1].key == "engine.empty"
     fake.add_fixture(url, os.path.join(FIX, "captcha.html"))
     assert ad.search(Q, http) == [] and events[-1].key == "engine.captcha"
+
+
+def test_results_page_mentioning_turnstile_is_not_captcha():
+    """Выезд 2: обычная выдача Bing упоминает turnstile в скрипте — адаптер принимал её за капчу."""
+    from chipfinder.acquire.sources.engine_html import bing_is_captcha, decode_bing
+    page = ('<script>var k=["rd_tb_cnt","cf-turnstile-wrapper","rcp-"];</script><ol id="b_results">'
+            '<li class="b_algo"><h2><a href="https://example.org/ne555.pdf">NE555 datasheet</a></h2><p>Timer</p></li></ol>')
+    assert not bing_is_captcha(page) and decode_bing(page)[0][0] == "https://example.org/ne555.pdf"
+    assert bing_is_captcha('<div class="cf-turnstile"></div><form id="b_captcha"></form>')

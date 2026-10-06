@@ -18,12 +18,12 @@ BUDGET_SEC = 20 * 60
 
 
 def md(rows, probes, note):
-    lines = ["# Проверка adapters: тестовый запрос NE555 к каждому адаптеру", "", note, "",
-             "| Уровень | Источник | Адаптер | Итог | Найдено (PDF) | Время, с | Подробности | Главная страница |",
-             "|---|---|---|---|---|---|---|---|"]
+    lines = ["# Проверка adapters: тестовый запрос к каждому адаптеру (NE555 или чип, за который источник берётся)", "", note, "",
+             "| Уровень | Источник | Адаптер | Чип | Итог | Найдено (PDF) | Время, с | Подробности | Главная страница |",
+             "|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
-        lines.append("| %s | %s | %s | %s | %d (%d) | %s | %s | %s |" % (
-            r["level"], r["id"], r["adapter"], r["status"], r["leads"], r["pdfs"], r["seconds"],
+        lines.append("| %s | %s | %s | %s | %s | %d (%d) | %s | %s | %s |" % (
+            r["level"], r["id"], r["adapter"], r.get("part", ""), r["status"], r["leads"], r["pdfs"], r["seconds"],
             r["detail"].replace("|", "/")[:80], probes.get(r["id"], "")))
     return "\n".join(lines) + "\n"
 

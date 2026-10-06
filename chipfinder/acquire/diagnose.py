@@ -4,7 +4,10 @@
 Каждый включённый источник из `data/sources.json` получает тестовый запрос (по умолчанию NE555), итог — один из:
 ok (есть результат) · empty (пусто) · captcha · no_key · quota (лимит) · error (сеть, код ≥ 400) ·
 parse_error (адаптер упал на ответе — вёрстка изменилась) · no_adapter (в sources.json есть, класса нет) ·
-disabled (выключен, не проверялся). Вердикт берётся из событий хода поиска, а не из текста.
+disabled (выключен, не проверялся) · not_applicable (источник не для тестовых чипов, в сеть не ходили).
+Вердикт берётся из событий хода поиска, а не из текста.
+Источнику, который берётся не за всякий партномер (сайт производителя: `applies`), подбирается свой чип из
+`TEST_PARTS` — иначе он молча пропускает NE555, и доступный сайт выглядит недоступным (отчёт выезда 2).
 Если передан `record_dir`, сырые ответы сайта (урезанные) сохраняются — из них делают фикстуры (шаг 3.4).
 """
 from __future__ import annotations
@@ -22,9 +25,11 @@ from .registry import ADAPTERS, Registry, load_builtin
 
 log = logging.getLogger("chipfinder.acquire.diagnose")
 TEST_PART = "NE555"
+TEST_PARTS = ("NE555", "LM358", "STM32F103C8T6", "ATMEGA328P", "ESP8266EX", "W25Q64JV", "MX25L6406E", "CH340G")
 TEST_CODE = "A6W"            # для источников, которым нужен код маркировки SMD
 SAVE_BYTES = 150 * 1024
-STATUSES = ("ok", "empty", "captcha", "no_key", "quota", "error", "parse_error", "no_adapter", "disabled")
+STATUSES = ("ok", "empty", "captcha", "no_key", "quota", "error", "parse_error", "no_adapter", "disabled",
+            "not_applicable")
 BAD = ("captcha", "quota", "error", "parse_error", "no_adapter")
 _BY_EVENT = {"engine.no_key": "no_key", "engine.captcha": "captcha", "engine.quota": "quota", "engine.error": "error"}
 
@@ -87,7 +92,7 @@ def diagnose_adapters(sources_path: Optional[str], http: Any, keys: Optional[Dic
             break
         row = {"id": entry.id, "name": entry.name or entry.id, "adapter": entry.adapter, "level": entry.level,
                "domains": list(entry.domains), "status": "", "detail": "", "leads": 0, "pdfs": 0, "seconds": 0.0,
-               "saved": []}
+               "saved": [], "part": part}
         rows.append(row)
         cls = ADAPTERS.get(entry.adapter)
         if not entry.enabled:
@@ -99,7 +104,13 @@ def diagnose_adapters(sources_path: Optional[str], http: Any, keys: Optional[Dic
         say("Проверка %d/%d: %s" % (i + 1, len(entries), row["name"]))
         ad = cls(entry, bus=bus, key=reg.keys.get(entry.needs_key) if entry.needs_key else None)
         rec = Recorder(http)
-        text = part + " datasheet pdf" if ad.family == "engine" else part
+        if hasattr(ad, "applies"):
+            fits = [p for p in (part,) + TEST_PARTS if ad.applies(p)]
+            if not fits:
+                row.update(status="not_applicable", detail="источник не для тестовых чипов")
+                continue
+            row["part"] = fits[0]
+        text = row["part"] + " datasheet pdf" if ad.family == "engine" else row["part"]
         kind = "smd" if any("{code}" in t and "{part}" not in t for t in entry.queries) else "part"
         if kind == "smd":
             text = TEST_CODE

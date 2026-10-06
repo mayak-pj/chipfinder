@@ -17,13 +17,16 @@ _A = re.compile(r"<a\b([^>]*)>(.*?)</a\s*>", re.S | re.I)
 _SRC = re.compile(r"<(?:iframe|embed|object)\b[^>]*?\b(?:src|data)=[\"']([^\"']+)[\"']", re.S | re.I)
 _ATTR = r"\b%s=[\"']([^\"']*)[\"']"
 _TAG = re.compile(r"<[^>]+>")
+_CHALLENGE_MARKS = ("just a moment", "challenge-error-text", "_cf_chl_opt", "cf-challenge")
 
 
 def is_blocked(status: int, page: str) -> bool:
-    """Страница проверки Cloudflare вместо сайта."""
+    """Страница проверки Cloudflare вместо сайта. Одного адреса challenges.cloudflare.com мало: обычная страница
+    подключает оттуда виджет для формы входа (FindChips)."""
     low = page[:200000].lower()
-    return "waf拦截页面" in low or ("just a moment" in low and "challenge" in low) or "challenges.cloudflare.com" in low or (
-        status in (403, 503) and "cloudflare" in low)
+    if "waf拦截页面" in low or (status in (403, 503) and "cloudflare" in low):
+        return True
+    return "challenge" in low and any(mark in low for mark in _CHALLENGE_MARKS)
 
 
 def text_of(fragment: str) -> str:

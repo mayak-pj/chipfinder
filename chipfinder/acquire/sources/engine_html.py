@@ -94,6 +94,10 @@ def bing_target(href: str) -> str:
 
 
 def bing_is_captcha(page: str) -> bool:
+    """Страница проверки вместо выдачи. Обычная выдача тоже упоминает turnstile (в списке классов скрипта) —
+    страница с результатами капчей не считается."""
+    if _BING_BLOCK.search(page):
+        return False
     low = page.lower()
     return "b_captcha" in low or "/challenge/" in low or "turnstile" in low
 

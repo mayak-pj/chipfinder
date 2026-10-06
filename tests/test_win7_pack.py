@@ -91,7 +91,48 @@ def test_selftest_check(tmp_path):
     res = selftest.run(ctx)
     assert res["status"] == "ok" and res["tail"] == ["1 passed"]
     (app / "run.py").write_text("import sys\nprint('1 failed')\nsys.exit(1)\n", encoding="utf-8")
-    assert selftest.run(ctx)["status"] == "fail"
+    res = selftest.run(ctx)
+    assert res["status"] == "fail" and "crashed_tests" not in res
+
+
+CRASHING = """import os, sys
+args = sys.argv[sys.argv.index('--selftest') + 1:]
+tests = ['tests/test_a.py::test_one', 'tests/test_b.py::test_qt[x-1]', 'tests/test_c.py::test_two',
+         'tests/test_d.py::test_native']
+bad = ('tests/test_b.py::test_qt[x-1]', 'tests/test_d.py::test_native')
+skip = [a.split('=', 1)[1] for a in args if a.startswith('--deselect=')]
+for t in tests:
+    if t in skip:
+        continue
+    if '-vv' in args:
+        sys.stdout.write(t + ' ')
+    if t in bad:
+        sys.stdout.flush()
+        os._exit(70)        # обрыв вместо кода pytest
+    sys.stdout.write('PASSED [ 50%]\\n' if '-vv' in args else '.')
+print('\\n2 passed, 2 deselected')
+"""
+
+
+def test_selftest_check_finds_crashing_tests_and_runs_the_rest(tmp_path):
+    import selftest
+    app = tmp_path / "Папка с пробелом"
+    app.mkdir()
+    (app / "run.py").write_text(CRASHING, encoding="utf-8")
+    res = selftest.run(rc.Context(str(app), str(tmp_path)))
+    assert res["status"] == "fail" and res["returncode"] == 70
+    assert res["crashed_tests"] == ["tests/test_b.py::test_qt[x-1]", "tests/test_d.py::test_native"]
+    assert res["rest_returncode"] == 0 and res["rest_tail"][-1] == "2 passed, 2 deselected"
+    verbose = (tmp_path / "selftest_verbose.txt").read_text(encoding="utf-8")
+    assert verbose.count("=== -vv") == 3 and "--deselect=tests/test_d.py::test_native" in verbose
+
+
+def test_selftest_last_started():
+    import selftest
+    assert selftest.last_started("tests/a.py::t1 PASSED [ 1%]\ntests/a.py::t2 \nFatal Python error: Aborted\n"
+                                 '  File "x.py", line 3 in t2\n') == "tests/a.py::t2"
+    assert selftest.last_started("tests/a.py::t1 PASSED [ 1%]\n") == "" and selftest.last_started("....") == ""
+    assert selftest.crashed(1073741845) and selftest.crashed(-6) and not selftest.crashed(1) and not selftest.crashed(None)
 
 
 def test_window_check_snapshot(tmp_path):
