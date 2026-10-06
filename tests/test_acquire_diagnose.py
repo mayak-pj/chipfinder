@@ -119,3 +119,17 @@ def test_adapters_dialog_offscreen(tmp_path):
     dlg = AdaptersDialog(rows)
     from PyQt5.QtWidgets import QTableWidget
     assert dlg.findChild(QTableWidget).rowCount() == len(rows) and app is not None
+
+
+def test_offtopic_engine_is_bad_but_not_blocked(tmp_path):
+    """Выезд 2: поисковик отвечает, но выдача не по запросу — отдельный итог, в запрос администраторам не попадает."""
+    data = {"version": 2, "levels": [{"id": "search"}], "sources": [
+        {"id": "bing", "adapter": "engine_html", "name": "Bing", "level": "search", "lang": "en", "decoder": "bing",
+         "url": "https://www.bing.com/search?q={q}", "domains": ["bing.com"]}]}
+    http, fake = make(tmp_path)
+    http.add_allowed(["bing.com"])
+    fake.add_fixture("https://www.bing.com/search?q=NE555+datasheet+pdf", os.path.join("sources", "bing", "offtopic.html"))
+    row = diagnose.diagnose_adapters(None, http, data=data, record_dir=str(tmp_path / "raw"))[0]
+    assert row["status"] == "offtopic" and row["leads"] == 0 and "не по запросу" in row["detail"]
+    assert row["saved"] and "offtopic" in diagnose.BAD and "offtopic" in diagnose.STATUSES
+    assert diagnose.admin_domains([row]) == []

@@ -4,6 +4,8 @@
 Есть декодеры `ddg` (DuckDuckGo HTML), `bing` (Bing, Bing CN), `mojeek`, `brave`, `yandex`, `baidu`, `sogou`, `so360`.
 Страница декодируется как UTF-8, при ошибке — как GB18030 (китайские поисковики).
 Капча: домен «отдыхает» `REST_MINUTES` минут, в сеть в это время не ходим, событие `engine.captcha`.
+Ссылки без партномера в заголовке, фрагменте и адресе отбрасываются; все такие — событие `engine.offtopic`
+(выезд 2: Bing из сети работы отдал обычную страницу выдачи с десятью посторонними ссылками).
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from urllib.parse import parse_qs, quote_plus, unquote, urlsplit
 
 from ..models import Lead
+from ..query import mentions, relevance_keys
 from ..registry import register
 from .base import SourceAdapter, SourceError
 
@@ -70,6 +73,7 @@ def decode_ddg(page: str) -> List[Tuple[str, str, str]]:
 _BING_BLOCK = re.compile(r'<li\b[^>]*\bclass="[^"]*\bb_algo\b[^"]*"[^>]*>(.*?)(?=<li\b[^>]*\bclass="[^"]*\bb_algo\b|</ol>|$)', re.S | re.I)
 _BING_LINK = re.compile(r'<h2\b[^>]*>\s*<a\b([^>]*)>(.*?)</a>', re.S | re.I)
 _BING_SNIPPET = re.compile(r'<p\b[^>]*>(.*?)</p>', re.S | re.I)
+_BING_EMPTY = re.compile(r'<li\b[^>]*\bclass="[^"]*\bb_no\b', re.I)
 
 
 def bing_target(href: str) -> str:
@@ -95,11 +99,13 @@ def bing_target(href: str) -> str:
 
 def bing_is_captcha(page: str) -> bool:
     """Страница проверки вместо выдачи. Обычная выдача тоже упоминает turnstile (в списке классов скрипта) —
-    страница с результатами капчей не считается."""
+    страница с результатами или с «нет результатов» (`li.b_no`) капчей не считается."""
     if _BING_BLOCK.search(page):
         return False
     low = page.lower()
-    return "b_captcha" in low or "/challenge/" in low or "turnstile" in low
+    if "b_captcha" in low or "/challenge/" in low:
+        return True
+    return "turnstile" in low and not _BING_EMPTY.search(page)
 
 
 def decode_bing(page: str) -> List[Tuple[str, str, str]]:
@@ -332,7 +338,17 @@ class EngineHtml(SourceAdapter):
             raise SourceError("engine.quota" if fetched["status"] == 429 else "engine.error",
                               "HTTP %d" % fetched["status"])
         leads = []
+        keys = relevance_keys(query)
+        dropped = 0
         for link, title, snippet in parse(page):
+            if not mentions(keys, title, snippet, unquote(link)):
+                dropped += 1
+                log.debug("%s: ссылка не по запросу «%s»: %s", self.id, text, link)
+                continue
             is_pdf = urlsplit(link).path.lower().endswith(".pdf")
             leads.append(Lead(url=link, title=title, snippet=snippet, kind="pdf" if is_pdf else "page"))
+        if dropped:
+            log.info("%s: «%s» — отброшено посторонних ссылок: %d из %d", self.id, text, dropped, dropped + len(leads))
+        if dropped and not leads:
+            raise SourceError("engine.offtopic", "off-topic", n=dropped)
         return leads

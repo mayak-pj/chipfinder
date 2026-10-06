@@ -60,9 +60,9 @@ def test_applicable_templates():
 
 def test_first_engine_with_results_wins_and_leads_are_retagged(tmp_path):
     reg, http, fake, events = setup(tmp_path, ["{part} datasheet", "{part} форум"])
-    for q in ("NE555 datasheet", "NE555 форум"):
+    for q in ("STM32F103C8 datasheet", "STM32F103C8 форум"):
         fake.add(DDG + quote_plus(q), page("ok.html"))
-    leads = {a.id: a for a in reg.build()}["qs"].search(Query("en", "NE555", "part"), http)
+    leads = {a.id: a for a in reg.build()}["qs"].search(Query("en", "STM32F103C8", "part"), http)
     assert leads and all(l.source_id == "qs" and l.level == "forum" for l in leads)
     assert len(leads) == len(set(l.url for l in leads))                # повторы между запросами убраны
     assert not any(BING in c[1] for c in fake.calls)                  # Bing не трогали: DDG уже дал результат

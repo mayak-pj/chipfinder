@@ -2,7 +2,7 @@
 """План запросов на трёх языках (шаг 1.3, ARCHITECTURE §4.7)."""
 import pytest
 
-from chipfinder.acquire.query import base_part, family, is_smd_code, plan_queries
+from chipfinder.acquire.query import Query, base_part, family, is_smd_code, mentions, plan_queries, relevance_keys
 
 
 @pytest.mark.parametrize("raw, base", [
@@ -72,3 +72,38 @@ def test_language_order_from_config():
 
 def test_unknown_langs_fall_back_to_default():
     assert {q.lang for q in plan_queries("LM358", langs=["xx"])} == {"en", "zh", "ru"}
+
+
+def test_plan_keeps_part_for_relevance_check():
+    qs = plan_queries("STM32F103C8T6")
+    assert {q.part for q in qs if q.kind == "part"} == {"STM32F103C8"}
+    assert {q.part for q in qs if q.kind == "family"} == {"STM32F103"}
+    assert {q.part for q in plan_queries("A6W")} == {"A6W"}
+
+
+@pytest.mark.parametrize("query, keys", [
+    (Query("en", "STM32F103C8 datasheet pdf", "part", "STM32F103C8"), ["STM32F103C8", "STM32F103"]),
+    (Query("en", "NE555 datasheet pdf", "part"), ["NE555"]),                   # партномер не задан — берётся из текста
+    ("W25Q64JV 数据手册", ["W25Q64JV", "W25Q64"]),
+    ("25Q512JVFQ datasheet pdf", ["25Q512JVFQ", "25Q512"]),                    # усечённая маркировка: ряд без суффикса
+    ("LM358 filetype:pdf site:21ic.com", ["LM358"]),                           # операторы поисковика — не партномер
+    (Query("zh", "A6W 丝印", "smd", "A6W"), ["A6W"]),
+    ("даташит микросхемы", []),                                                # проверять нечем — отсева нет
+    ("", []),
+])
+def test_relevance_keys(query, keys):
+    assert relevance_keys(query) == keys
+
+
+@pytest.mark.parametrize("keys, texts, hit", [
+    (["NE555"], ("NE555 Precision Timer", "", ""), True),
+    (["NE555"], ("Timer", "the ne-555 is a classic", ""), True),               # дефис и регистр не мешают
+    (["NE555"], ("PDF", "Download", "https://example.org/files/ne555.pdf"), True),
+    (["NE555"], ("Sign in", "Sign in to the assistant", "https://example.org/"), False),
+    (["25Q512JVFQ", "25Q512"], ("W25Q512JV 3V 512M-bit serial flash", "", ""), True),
+    (["A6W"], ("A6W SMD marking: BAS16W", "", ""), True),
+    (["A6W"], ("Sea6water pumps", "", "https://example.org/sea6water"), False), # короткий код — только отдельным словом
+    ([], ("что угодно", "", ""), True),
+])
+def test_mentions(keys, texts, hit):
+    assert mentions(keys, *texts) is hit

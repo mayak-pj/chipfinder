@@ -20,6 +20,7 @@
   "engine.captcha": "{engine}: «{query}» — капча, пропуск (повтор через {minutes} мин)",
   "engine.quota": "{engine}: «{query}» — лимит запросов API исчерпан, пропуск",
   "engine.error": "{engine}: «{query}» — запрос не удался ({detail})",
+  "engine.offtopic": "{engine}: «{query}» — выдача не по запросу, пропуск (посторонних ссылок: {n})",
 
   "site.search": "поиск на {site}…",
   "site.found": "поиск на {site} — найдено {n:совпадение|совпадения|совпадений}",

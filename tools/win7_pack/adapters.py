@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Проверка adapters: тестовый запрос (NE555) к каждому адаптеру из data/sources.json.
 
-Итог по источнику: ok / empty / captcha / no_key / quota / error / parse_error / no_adapter / disabled
+Итог по источнику: ok / empty / captcha / offtopic / no_key / quota / error / parse_error / no_adapter / disabled
 (`chipfinder/acquire/diagnose.py`). Для источников с ошибкой дополнительно открывается главная страница домена
 (sites.probe_url) — видно, закрыт сайт или сломан разбор. Сырые ответы неудачных источников сохраняются в
 adapters/raw/ — из них делаются фикстуры (шаг 3.4). Список закрытых доменов для администраторов — в adapters/

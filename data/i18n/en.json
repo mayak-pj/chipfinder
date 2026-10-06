@@ -20,6 +20,7 @@
   "engine.captcha": "{engine} query: \"{query}\" — captcha, skipped (retry in {minutes} min)",
   "engine.quota": "{engine} query: \"{query}\" — API daily limit reached, skipped",
   "engine.error": "{engine} query: \"{query}\" — request failed ({detail})",
+  "engine.offtopic": "{engine} query: \"{query}\" — results do not match the query, skipped ({n:unrelated link|unrelated links})",
 
   "site.search": "Searching {site}…",
   "site.found": "Searching {site} — {n:match|matches} found",

@@ -37,7 +37,7 @@ KEYS = {
     "maker.search": "", "maker.found": "found", "maker.empty": "empty",
     "engine.query": "", "engine.found": "found", "engine.empty": "empty",
     "engine.no_key": "skip", "engine.captcha": "skip", "engine.quota": "fail",
-    "engine.error": "fail",
+    "engine.error": "fail", "engine.offtopic": "fail",
     "site.search": "", "site.found": "found", "site.found_pdf": "found", "site.empty": "empty",
     "market.search": "", "market.found": "found", "market.empty": "empty",
     "crawl.found": "found", "crawl.empty": "empty",

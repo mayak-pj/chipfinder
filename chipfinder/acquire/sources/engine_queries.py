@@ -56,7 +56,7 @@ class EngineQueries(SourceAdapter):
                 q = tpl.format(part=text, code=text, maker_site=maker_site)
                 for engine in engines:
                     self._asked += 1
-                    found = engine.search(Query(self.entry.lang or lang, q, kind or "part"), http)
+                    found = engine.search(Query(self.entry.lang or lang, q, kind or "part", text), http)
                     for lead in found:
                         if lead.url not in seen:
                             seen.add(lead.url)

@@ -43,7 +43,7 @@ PER_PAGE = 2              # PDF с одной страницы
 STRIKES = 2               # неудач источника подряд, после которых он пропускается
 CHIP_SEC = 150.0
 LOG_LINES = 80
-_BAD = ("captcha", "quota", "error", "no_key", "parse_error")
+_BAD = ("captcha", "offtopic", "quota", "error", "no_key", "parse_error")
 
 
 class _Pages:

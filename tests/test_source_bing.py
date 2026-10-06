@@ -20,7 +20,7 @@ ENTRIES = {
     "bing": {"id": "bing", "adapter": "engine_html", "name": "Bing", "level": "search", "lang": "en",
              "url": "https://www.bing.com/search?q={q}&setlang=en", "decoder": "bing", "domains": ["bing.com"]},
     "bing_cn": {"id": "bing_cn", "adapter": "engine_html", "name": "必应", "level": "china", "lang": "zh",
-                "url": "https://cn.bing.com/search?q={q}&ensearch=0", "decoder": "bing", "domains": ["cn.bing.com"]},
+                "url": "https://www.bing.com/search?q={q}&setlang=zh-Hans", "decoder": "bing", "domains": ["bing.com"]},
 }
 Q = Query("en", "STM32F103C8 datasheet pdf", "part")
 
@@ -39,7 +39,12 @@ def make(tmp_path, key="bing"):
 def test_in_sources_json():
     reg = Registry.load(os.path.join(APP, "data", "sources.json"))
     ids = {a.id: a for a in reg.build()}
-    assert ids["bing"].available and ids["bing_cn"].available
+    assert ids["bing"].available
+    # выезд 2: cn.bing.com переадресует на главную www.bing.com без выдачи; с mkt=zh-CN www.bing.com отвечает
+    # «нет результатов», без mkt повторяет обычный Bing — источник выключен, поисковики Китая его не зовут
+    assert "bing_cn" not in ids and reg.engine("bing_cn") is None
+    cn = [e for e in reg.entries(include_disabled=True) if e.id == "bing_cn"][0]
+    assert not cn.enabled and cn.domains == ["bing.com"] and "cn.bing.com" not in cn.options["url"]
 
 
 def test_bing_target_decoding():
@@ -86,3 +91,30 @@ def test_results_page_mentioning_turnstile_is_not_captcha():
             '<li class="b_algo"><h2><a href="https://example.org/ne555.pdf">NE555 datasheet</a></h2><p>Timer</p></li></ol>')
     assert not bing_is_captcha(page) and decode_bing(page)[0][0] == "https://example.org/ne555.pdf"
     assert bing_is_captcha('<div class="cf-turnstile"></div><form id="b_captcha"></form>')
+    # «нет результатов» с тем же скриптом — тоже не капча (так www.bing.com отвечает на mkt=zh-CN)
+    empty = '<script>var k=["cf-turnstile-wrapper"];</script><ol id="b_results"><li class="b_no"><h1>没有结果</h1></li></ol>'
+    assert not bing_is_captcha(empty) and decode_bing(empty) == []
+    assert bing_is_captcha('<script>var k=["cf-turnstile-wrapper"];</script><div id="cf-wrapper"></div>')
+
+
+def test_offtopic_results_are_dropped(tmp_path):
+    """Выезд 2: Bing из сети работы отдал 10 посторонних ссылок на «NE555 datasheet pdf», адаптер сообщил «найдено 10»."""
+    ad, http, fake, events, url = make(tmp_path)
+    fake.add_fixture(url, os.path.join(FIX, "offtopic.html"))
+    assert ad.search(Q, http) == []
+    assert [e.key for e in events] == ["engine.query", "engine.offtopic"]
+    assert events[-1].params["n"] == 3 and events[-1].outcome == "fail"
+
+
+def test_offtopic_results_mixed_with_real(tmp_path):
+    ad, http, fake, events, url = make(tmp_path)
+    page = ('<ol id="b_results">'
+            '<li class="b_algo"><h2><a href="https://example.org/login">Личный кабинет</a></h2><p>Забыли пароль?</p></li>'
+            '<li class="b_algo"><h2><a href="https://example.org/doc/1">Datasheet</a></h2><p>STM32F103x8 STM32F103xB</p></li>'
+            '<li class="b_algo"><h2><a href="https://example.org/files/stm32f103c8.pdf">PDF</a></h2><p>Download</p></li>'
+            '<li class="b_algo"><h2><a href="https://example.org/a">STM32-F103 C8 board</a></h2><p>Blue pill</p></li></ol>')
+    fake.add(url, body=page.encode("utf-8"))
+    leads = ad.search(Q, http)
+    assert [l.url for l in leads] == ["https://example.org/doc/1", "https://example.org/files/stm32f103c8.pdf",
+                                      "https://example.org/a"]
+    assert events[-1].key == "engine.found" and events[-1].params["n"] == 3

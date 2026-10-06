@@ -28,10 +28,11 @@ TEST_PART = "NE555"
 TEST_PARTS = ("NE555", "LM358", "STM32F103C8T6", "ATMEGA328P", "ESP8266EX", "W25Q64JV", "MX25L6406E", "CH340G")
 TEST_CODE = "A6W"            # для источников, которым нужен код маркировки SMD
 SAVE_BYTES = 150 * 1024
-STATUSES = ("ok", "empty", "captcha", "no_key", "quota", "error", "parse_error", "no_adapter", "disabled",
+STATUSES = ("ok", "empty", "captcha", "offtopic", "no_key", "quota", "error", "parse_error", "no_adapter", "disabled",
             "not_applicable")
-BAD = ("captcha", "quota", "error", "parse_error", "no_adapter")
-_BY_EVENT = {"engine.no_key": "no_key", "engine.captcha": "captcha", "engine.quota": "quota", "engine.error": "error"}
+BAD = ("captcha", "offtopic", "quota", "error", "parse_error", "no_adapter")
+_BY_EVENT = {"engine.no_key": "no_key", "engine.captcha": "captcha", "engine.quota": "quota", "engine.error": "error",
+             "engine.offtopic": "offtopic"}
 
 
 class Recorder:
@@ -56,13 +57,13 @@ class Recorder:
 
 
 def _status_of(events: List[Any]) -> str:
-    """Итог по всем событиям источника (у `engine_queries` их несколько): найдено > пусто > капча > лимит > ошибка."""
+    """Итог по всем событиям источника (у `engine_queries` их несколько): найдено > пусто > капча > не по запросу > лимит > ошибка."""
     keys = [e.key for e in events]
     if any(k.endswith(".found") or k.endswith(".found_pdf") for k in keys):
         return "ok"
     if any(k.endswith(".empty") for k in keys):
         return "empty"
-    for key in ("engine.captcha", "engine.quota", "engine.error", "engine.no_key"):
+    for key in ("engine.captcha", "engine.offtopic", "engine.quota", "engine.error", "engine.no_key"):
         if key in keys:
             return _BY_EVENT[key]
     return "error"            # события не пришли: адаптер ничего не сообщил

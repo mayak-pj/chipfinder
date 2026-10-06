@@ -79,6 +79,47 @@ class Query:
     lang: str
     text: str
     kind: str            # "part" | "family" | "smd"
+    part: str = ""       # партномер / семейство / код из запроса: по нему отсеиваются посторонние ссылки выдачи
+
+
+_OPERATOR = re.compile(r"\S+:\S*")              # site:…, filetype:…
+_WORD = re.compile(r"[A-Z0-9][A-Z0-9._/+-]*")
+_SHORT_KEY = 5                                  # короче — искать только отдельным словом
+
+
+def _compact(text: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "", (text or "").upper())
+
+
+def relevance_keys(query: object) -> List[str]:
+    """Что должно встретиться в ссылке по запросу: партномер и его семейство (усечённая маркировка `25Q512JVFQ`
+    в документе пишется `W25Q512JV`). Партномер — `query.part`, иначе первое слово запроса с цифрой.
+    Пусто — проверять нечем."""
+    part = getattr(query, "part", "") or ""
+    if not part:
+        text = _OPERATOR.sub(" ", getattr(query, "text", query) or "").upper()
+        part = next((w for w in _WORD.findall(text) if any(c.isdigit() for c in w)), "")
+    part = _compact(part)
+    if not part:
+        return []
+    fam = family(part) if getattr(query, "kind", "part") != "smd" else ""
+    return [part] + ([fam] if fam and fam != part else [])
+
+
+def mentions(keys: Sequence[str], *texts: str) -> bool:
+    """Есть ли хоть один ключ в текстах (заголовок, фрагмент, адрес): без регистра, дефисов и пробелов;
+    короткий код — только отдельным словом. Без ключей — да."""
+    if not keys:
+        return True
+    upper = " ".join(t or "" for t in texts).upper()
+    solid = _compact(upper)
+    for key in keys:
+        if len(key) >= _SHORT_KEY:
+            if key in solid:
+                return True
+        elif re.search(r"(?<![A-Z0-9])%s(?![A-Z0-9])" % re.escape(key), upper):
+            return True
+    return False
 
 
 def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[bool] = None,
@@ -90,16 +131,16 @@ def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[
     out: List[Query] = []
     seen = set()
 
-    def add(lang: str, text: str, kind: str) -> None:
+    def add(lang: str, text: str, kind: str, key: str) -> None:
         if (lang, text) not in seen:
             seen.add((lang, text))
-            out.append(Query(lang, text, kind))
+            out.append(Query(lang, text, kind, key))
 
     if as_smd:
         code = re.sub(r"\s+", "", raw).upper()
         for lang in order:
             for t in tpl["smd"].get(lang, []):
-                add(lang, t.format(code=code), "smd")
+                add(lang, t.format(code=code), "smd", code)
         return out
     part = base_part(raw)
     if not part:
@@ -107,9 +148,9 @@ def plan_queries(raw: str, langs: Optional[Sequence[str]] = None, smd: Optional[
     fam = family(raw)
     for lang in order:
         for t in tpl["part"].get(lang, []):
-            add(lang, t.format(part=part), "part")
+            add(lang, t.format(part=part), "part", part)
         if fam:                                    # по одному запросу семейства на язык
             first = tpl["part"].get(lang, [])[:1]
             for t in first:
-                add(lang, t.format(part=fam), "family")
+                add(lang, t.format(part=fam), "family", fam)
     return out
