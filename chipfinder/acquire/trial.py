@@ -122,8 +122,9 @@ def trial_downloads(sources_path: Optional[str], http: Any, keys: Optional[Dict[
         t0 = clock()
         attempts: List[Dict[str, Any]] = []
         foreign: List[str] = []
+        refused: List[Dict[str, str]] = []
         row = {"part": part, "status": "", "valid": 0, "sources": [], "leads": 0, "attempts": attempts,
-               "not_whitelisted": foreign, "budget": False, "seconds": 0.0, "log": []}
+               "not_whitelisted": foreign, "not_whitelisted_urls": refused, "budget": False, "seconds": 0.0, "log": []}
         rows.append(row)
 
         def over(share: float = 1.0) -> bool:
@@ -148,6 +149,9 @@ def trial_downloads(sources_path: Optional[str], http: Any, keys: Optional[Dict[
                 return True
             if host_of(lead.url) not in foreign:
                 foreign.append(host_of(lead.url))
+            if lead.url not in [r["url"] for r in refused]:
+                refused.append({"url": lead.url, "host": host_of(lead.url), "source": lead.source_id,
+                                "reason": "http" if lead.url.startswith("http://") else "domain"})
             return False
 
         def download(lead: Lead, from_page: str = "") -> Dict[str, Any]:
@@ -180,6 +184,8 @@ def trial_downloads(sources_path: Optional[str], http: Any, keys: Optional[Dict[
         for lead in ranked:
             if row["valid"] >= GOOD or over():
                 break
+            if lead.url.startswith("http://") and http.is_allowed("https://" + lead.url[7:]):
+                lead = replace(lead, url="https://" + lead.url[7:])      # ссылка по http на разрешённый сайт — по https
             if not allowed(lead):
                 continue
             host = host_of(lead.url)

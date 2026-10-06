@@ -45,6 +45,10 @@ def md(rows, hosts, note):
     foreign = sorted(set(d for r in rows for d in r["not_whitelisted"]))
     if foreign:
         lines += ["", "## Не в белом списке программы (ссылки были, не открывались)", ""] + ["- " + d for d in foreign]
+        urls = sorted(set((u["url"], u["source"], u["reason"]) for r in rows for u in r.get("not_whitelisted_urls", [])))
+        if urls:
+            lines += ["", "Сами адреса (причина: `domain` — домена нет в списке, `http` — только http):", ""]
+            lines += ["- %s — источник %s, причина %s" % u for u in urls]
     return "\n".join(lines) + "\n"
 
 

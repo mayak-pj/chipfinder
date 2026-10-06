@@ -43,7 +43,7 @@ def test_registered_and_in_sources_json():
     assert ADAPTERS["datasheet4u"] is Datasheet4u and ADAPTERS["datasheetarchive"] is DatasheetArchive
     assert ADAPTERS["findchips"] is FindChips
     ids = [a.id for a in SRC.build("catalog")]
-    assert {"datasheet4u", "datasheetarchive", "findchips"} <= set(ids) and "datasheetspdf" not in ids
+    assert {"datasheet4u", "datasheetarchive"} <= set(ids) and not {"datasheetspdf", "findchips"} & set(ids)   # findchips выключен 3.4c
     assert not {"datasheet4u", "datasheetarchive", "findchips", "datasheetspdf"} & set(SRC.missing)
 
 

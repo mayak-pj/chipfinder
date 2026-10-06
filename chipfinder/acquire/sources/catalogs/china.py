@@ -24,6 +24,7 @@ from .common import _A, CatalogSite, href_of, text_of
 log = logging.getLogger("chipfinder.acquire.china")
 MAX_DETAILS = 5
 _PDF = re.compile(r"\.pdf$", re.I)
+_SERVICE = re.compile(r"^/search(?:/|$)", re.I)
 
 
 def _on(url: str, domains: List[str]) -> bool:
@@ -42,6 +43,8 @@ def links(page: str, base: str, domains: List[str], wanted: List[str]) -> Any:
         title = text_of(m.group(2))
         if _PDF.search(urlsplit(url).path):
             pdfs.append(url)
+        elif _SERVICE.match(urlsplit(url).path):
+            continue                       # `/search/video`, `/search/text` — вкладки выдачи, не карточки
         elif urlsplit(url).path.strip("/") and any(w in (title + " " + url).upper() for w in wanted):
             details.append((url, title))
     return details, pdfs

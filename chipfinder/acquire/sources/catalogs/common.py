@@ -24,6 +24,8 @@ def is_blocked(status: int, page: str) -> bool:
     """Страница проверки Cloudflare вместо сайта. Одного адреса challenges.cloudflare.com мало: обычная страница
     подключает оттуда виджет для формы входа (FindChips)."""
     low = page[:200000].lower()
+    if status == 203 and len(page) < 20000 and "document.cookie" in low and "reload" in low:
+        return True               # LCSC: «203» со скриптом, ставящим куку и перезагружающим страницу (защита сайта)
     if "waf拦截页面" in low or (status in (403, 503) and "cloudflare" in low):
         return True
     return "challenge" in low and any(mark in low for mark in _CHALLENGE_MARKS)
@@ -63,7 +65,8 @@ class CatalogSite(SourceAdapter):
     def _get(self, http: Any, url: str) -> Tuple[str, str]:
         """(адрес после переадресаций, текст страницы); капча — SourceError, сбой сети — тоже."""
         try:
-            reply = http.fetch(url)
+            timeout = self.entry.options.get("timeout")
+            reply = http.fetch(url, timeout=float(timeout)) if timeout else http.fetch(url)
         except Exception as e:
             detail = str(e) or type(e).__name__
             log.warning("%s: %s", self.id, detail)

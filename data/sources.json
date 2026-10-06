@@ -16,8 +16,8 @@
 
   "sources": [
     {"id": "alldatasheet", "adapter": "alldatasheet", "name": "AllDatasheet", "level": "catalog", "lang": "en", "url": "https://www.alldatasheet.com/view.jsp?Searchword={part}", "domains": ["alldatasheet.com"], "follow": 1, "enabled": true},
-    {"id": "datasheetarchive", "adapter": "datasheetarchive", "name": "Datasheet Archive", "level": "catalog", "lang": "en", "url": "https://www.datasheetarchive.com/search?q={part}", "domains": ["datasheetarchive.com"], "follow": 1, "enabled": true},
-    {"id": "findchips", "adapter": "findchips", "name": "FindChips", "level": "catalog", "lang": "en", "url": "https://www.findchips.com/search/{part}", "domains": ["findchips.com"], "follow": 0, "enabled": true},
+    {"id": "datasheetarchive", "adapter": "datasheetarchive", "name": "Datasheet Archive", "level": "catalog", "lang": "en", "url": "https://www.datasheetarchive.com/search?q={part}", "domains": ["datasheetarchive.com"], "follow": 1, "timeout": 45, "enabled": true},
+    {"id": "findchips", "adapter": "findchips", "name": "FindChips", "level": "catalog", "lang": "en", "url": "https://www.findchips.com/search/{part}", "domains": ["findchips.com"], "follow": 0, "enabled": false, "note": "выключен 2026-10-06: на работе страница до 1.7 МБ грузится 16–45 с, режется на 512 КБ, ссылок на PDF в ней нет — только партномера для подсказок"},
     {"id": "datasheet4u", "adapter": "datasheet4u", "name": "Datasheet4U", "level": "catalog", "lang": "en", "url": "https://datasheet4u.com/share_search.php?sWord={part}", "domains": ["datasheet4u.com"], "follow": 1, "enabled": true},
     {"id": "datasheetspdf", "adapter": "datasheet4u", "name": "DatasheetsPDF", "level": "catalog", "lang": "en", "url": "https://www.datasheetspdf.com/share_search.php?sWord={part}", "domains": ["datasheetspdf.com"], "follow": 1, "enabled": false},
     {"id": "catalog_queries", "adapter": "engine_queries", "name": "Каталоги через поисковики", "level": "catalog", "lang": "en", "enabled": true,

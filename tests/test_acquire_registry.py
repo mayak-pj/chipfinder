@@ -187,7 +187,7 @@ def test_legacy_view_for_v1_search():
     assert [lv["id"] for lv in old["levels"]] == ["catalog", "maker", "world", "china", "russian", "forum", "marking",
                                                    "github"]
     catalog, marking, github = old["levels"][0], old["levels"][6], old["levels"][7]
-    assert [d["name"] for d in catalog["direct"]] == ["AllDatasheet", "Datasheet Archive", "FindChips", "Datasheet4U"]
+    assert [d["name"] for d in catalog["direct"]] == ["AllDatasheet", "Datasheet Archive", "Datasheet4U"]
     assert catalog["engines"] == ["duckduckgo", "bing", "mojeek", "brave"] and len(catalog["queries"]) == 3
     assert marking["for_codes"] and "{code}" in marking["queries"][0]
     assert github["github_api"].startswith("https://api.github.com/")

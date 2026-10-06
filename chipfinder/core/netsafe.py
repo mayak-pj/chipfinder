@@ -22,7 +22,7 @@ import os
 import re
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlsplit
 
 try:
@@ -157,11 +157,11 @@ class SafeHttp:
             self._session = s
         return self._session
 
-    def _send(self, method: str, url: str, headers: Dict[str, str]):
+    def _send(self, method: str, url: str, headers: Dict[str, str], timeout: Optional[float] = None):
         """Транспорт: единственное место, где выполняется настоящий HTTP-запрос."""
         if self.transport is not None:
             return self.transport(method, url, headers)
-        return self._get_session().request(method, url, headers=headers, timeout=self.timeout,
+        return self._get_session().request(method, url, headers=headers, timeout=timeout or self.timeout,
                                            allow_redirects=False, stream=True, verify=True)
 
     def _throttle(self, host: str) -> None:
@@ -175,7 +175,7 @@ class SafeHttp:
     # ---------- запросы ----------
     def _request(self, url: str, max_bytes: int, method: str = "GET",
                  accept: str = "*/*", referer: str = "",
-                 truncate: bool = False) -> Tuple[str, Dict[str, str], bytes, int]:
+                 truncate: bool = False, timeout: Optional[float] = None) -> Tuple[str, Dict[str, str], bytes, int]:
         """Возвращает (финальный_url, заголовки, тело, статус). Редиректы проверяются вручную.
 
         truncate=True — тело больше max_bytes обрезается (для проб), иначе NetBlocked."""
@@ -191,7 +191,7 @@ class SafeHttp:
                 headers["Referer"] = referer
             t0 = time.time()
             try:
-                r = self._send(method, cur, headers)
+                r = self._send(method, cur, headers, timeout)
             except Exception as e:
                 net_log.info("ERR\t%s\t%s", _masked(cur), type(e).__name__)
                 raise
@@ -259,10 +259,12 @@ class SafeHttp:
             raise NetBlocked("HTTP %d" % status)
         return json.loads(body.decode("utf-8", errors="replace"))
 
-    def fetch(self, url: str, max_bytes: int = 512 * 1024) -> Dict:
-        """Для диагностики: не бросает на коде ≥ 400, большое тело обрезает.
-        Возвращает {url, status, headers, body, truncated}; сетевые ошибки — исключением."""
-        final, hdrs, body, status = self._request(url, max_bytes + 1, accept="text/html,*/*", truncate=True)
+    def fetch(self, url: str, max_bytes: int = 512 * 1024, timeout: Optional[float] = None) -> Dict:
+        """Для диагностики: не бросает на коде ≥ 400, большое тело обрезает; `timeout` — свой срок ответа
+        вместо общего (тяжёлые страницы каталогов). Возвращает {url, status, headers, body, truncated};
+        сетевые ошибки — исключением."""
+        final, hdrs, body, status = self._request(url, max_bytes + 1, accept="text/html,*/*", truncate=True,
+                                                  timeout=timeout)
         return {"url": final, "status": status, "headers": hdrs, "body": body[:max_bytes],
                 "truncated": len(body) > max_bytes}
 
