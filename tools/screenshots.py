@@ -172,6 +172,20 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         w.log(u"Пример строки журнала")
         app.processEvents()
         save(w, name("log"))
+        inst = w.ext.get("blocked_sites").instance if w.ext and w.ext.get("blocked_sites") else None
+        if inst is not None:                                    # вкладка «Сайты без доступа» (7.8) с примером данных
+            from chipfinder.acquire.access import AccessLog
+            log = AccessLog(w.ctx.modules["local_db"])
+            log.record_failure("ti.com", "network_blocked", "NE555P", "https://www.ti.com/x", "maker", 0.4)
+            log.record_failure("st.com", "network_blocked", "L7805")
+            log.record_ok("st.com")
+            inst.access = lambda: log
+            inst.view.reload()
+            w.tabs.setCurrentWidget(inst.view)
+            for _ in range(20):
+                app.processEvents()
+                time.sleep(0.02)
+            save(w, name("blocked_sites"))
         for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w)),
                           ("diagnostics", diag), ("adapters", ada)):
             dlg.show()
