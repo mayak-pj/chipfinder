@@ -153,6 +153,25 @@ class AcquireStore:
                  json.dumps(passport, ensure_ascii=False) if passport else ""))
             self.db.conn.commit()
 
+    def remove(self, path: str) -> bool:
+        """Убирает файл из библиотеки вместе с паспортом и строками индекса (отклонённый пользователем документ)."""
+        db = self.db
+        root = os.path.abspath(db.library_dir)
+        if not os.path.abspath(path).startswith(root + os.sep):      # только своя библиотека
+            return False
+        with db._lock:
+            row = db.conn.execute("SELECT id FROM files WHERE path=?", (path,)).fetchone()
+            if row:
+                db.conn.execute("DELETE FROM parts WHERE file_id=?", (row[0],))
+                db.conn.execute("DELETE FROM files WHERE id=?", (row[0],))
+                db.conn.commit()
+        for p in (path, path + ".json"):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        return True
+
     def record_attempt(self, part: str, url: str, status: str, error: str = "", source: str = "") -> None:
         with self.db._lock:
             self.db.conn.execute("INSERT INTO attempts(part,url,source,status,error,at) VALUES(?,?,?,?,?,?)",
