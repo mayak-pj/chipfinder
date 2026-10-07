@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from typing import Dict, List, Optional, Tuple
 
 FIXTURES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fixtures")
@@ -20,6 +21,22 @@ class FakeResponse:
 
     def close(self) -> None:
         pass
+
+
+class VirtualTime:
+    """Часы для тестов ограничителя частоты: `sleep` не ждёт, а сдвигает время своего потока.
+
+    Подключение: `http._clock, http._sleep = vt.clock, vt.sleep`."""
+
+    def __init__(self, start: float = 1000.0) -> None:
+        self.start = start
+        self._local = threading.local()
+
+    def clock(self) -> float:
+        return self.start + getattr(self._local, "shift", 0.0)
+
+    def sleep(self, seconds: float) -> None:
+        self._local.shift = getattr(self._local, "shift", 0.0) + seconds
 
 
 class FakeHttp:

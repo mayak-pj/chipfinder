@@ -14,6 +14,7 @@ import logging
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence
 
@@ -36,6 +37,7 @@ from .verify import SourceTrust, verify_file
 log = logging.getLogger("chipfinder.acquire.orchestrator")
 LEADS_PER_LEVEL = 4       # сколько лучших ссылок уровня проверяется, прежде чем идти на следующий
 PDFS_PER_PAGE = 2         # сколько PDF берётся с одной страницы
+PARALLEL = 3              # сколько источников уровня спрашивается одновременно (§4.6)
 _ORDER = {"confirmed": 3, "probable": 2, "needs_user": 1, "rejected": 0}
 
 
@@ -77,7 +79,7 @@ class Orchestrator:
                  thresholds: Optional[Mapping[str, Any]] = None, weights: Optional[Mapping[str, Any]] = None,
                  tracker: Optional[BlockTracker] = None, access: Any = None, learner: Any = None,
                  recorder: Any = None, max_mb: float = MAX_MB, clock: Callable[[], float] = time.monotonic,
-                 sleep: Optional[Callable[[float], Any]] = None) -> None:
+                 sleep: Optional[Callable[[float], Any]] = None, parallel: int = PARALLEL) -> None:
         self.registry, self.http, self.store = registry, http, store
         self.bus = bus if bus is not None else EventBus()
         self.trust = trust or SourceTrust()
@@ -88,7 +90,9 @@ class Orchestrator:
         self.tracker = tracker or BlockTracker()
         self.access, self.learner, self.recorder = access, learner, recorder   # access.py, learn.py, stats.py
         self.clock = clock
+        self.parallel = max(1, int(parallel))
         self._cancel = threading.Event()
+        self._state = threading.Lock()                 # причина остановки: её проверяют потоки источников
         self.sleep = sleep or self._cancel.wait        # пауза между повторами прерывается отменой
 
     def cancel(self) -> None:
@@ -133,18 +137,19 @@ class Orchestrator:
 
     def _stop(self) -> bool:
         """Отмена или исчерпан бюджет (событие — один раз)."""
-        if self._why:
-            return True
-        b, res = self.budget, self._res
-        if self._cancel.is_set():
-            self._why = "cancelled"
-        elif self.clock() - self._started > b.seconds:
-            self._why = "budget"
-            self._emit("search.budget", seconds=int(b.seconds))
-        elif res.queries >= b.queries or res.downloads >= b.downloads:
-            self._why = "budget"
-            self._emit("search.limit", queries=res.queries, downloads=res.downloads)
-        return bool(self._why)
+        with self._state:
+            if self._why:
+                return True
+            b, res = self.budget, self._res
+            if self._cancel.is_set():
+                self._why = "cancelled"
+            elif self.clock() - self._started > b.seconds:
+                self._why = "budget"
+                self._emit("search.budget", seconds=int(b.seconds))
+            elif res.queries >= b.queries or res.downloads >= b.downloads:
+                self._why = "budget"
+                self._emit("search.limit", queries=res.queries, downloads=res.downloads)
+            return bool(self._why)
 
     def _local(self) -> bool:
         """Уровень «локальная база»: подтверждённый документ этого партномера уже в библиотеке."""
@@ -164,9 +169,7 @@ class Orchestrator:
         order = [lv["id"] for lv in self.registry.levels()]
         base = base_part(ctx.part)
         for level in order:
-            leads: List[Lead] = []
-            for adapter in self.registry.build(level):
-                leads += self._discover(adapter, plan)
+            leads = self._ask(self.registry.build(level), plan)
             fresh = []
             for lead in leads:
                 key = normalize_url(lead.url)
@@ -201,6 +204,17 @@ class Orchestrator:
         query = Query(adapter.lang or self.langs[0], text, "smd" if smd else "part", text)
         query.maker_site = self.registry.maker_site(self._ctx.manufacturer)      # для шаблонов {maker_site}
         return [query]
+
+    def _ask(self, adapters: List[Any], plan: List[Query]) -> List[Lead]:
+        """Источники уровня — одновременно, не больше `parallel`; ссылки — в порядке источников, как без потоков.
+
+        Частоту обращений к одному сайту держит `SafeHttp` (1 запрос в 1.5 с), поэтому источники одного домена
+        просто ждут своей очереди. Запросы одного источника идут по порядку в его потоке."""
+        if self.parallel <= 1 or len(adapters) <= 1:
+            return [lead for adapter in adapters for lead in self._discover(adapter, plan)]
+        with ThreadPoolExecutor(min(self.parallel, len(adapters)), thread_name_prefix="cf-search") as pool:
+            found = list(pool.map(lambda adapter: self._discover(adapter, plan), adapters))
+        return [lead for leads in found for lead in leads]
 
     def _discover(self, adapter: Any, plan: List[Query]) -> List[Lead]:
         leads: List[Lead] = []
@@ -343,4 +357,4 @@ def from_context(ctx: Any, bus: Optional[EventBus] = None, http: Any = None, db:
         owners=confirm_mod.owners_from_sources(registry.data), budget=Budget(**acq.get("budget", {})),
         langs=acq.get("languages"), thresholds=acq.get("thresholds"), weights=acq.get("weights"),
         access=AccessLog(db), learner=learner, recorder=StatsRecorder(SearchStats(db), bus),
-        max_mb=float(cfg.get("network", {}).get("max_pdf_mb", MAX_MB)))
+        max_mb=float(cfg.get("network", {}).get("max_pdf_mb", MAX_MB)), parallel=int(acq.get("parallel", PARALLEL)))

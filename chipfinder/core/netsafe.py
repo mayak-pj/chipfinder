@@ -107,8 +107,9 @@ class SafeHttp:
         self.max_html = int(net_cfg.get("max_html_mb", 3)) * 1024 * 1024
         self.max_pdf = int(net_cfg.get("max_pdf_mb", 40)) * 1024 * 1024
         self.min_interval = float(net_cfg.get("min_interval_sec", 1.5))
-        self._last: Dict[str, float] = {}
+        self._last: Dict[str, float] = {}       # сайт → время его последнего (или уже назначенного) запроса
         self._lock = threading.Lock()
+        self._clock, self._sleep = time.monotonic, time.sleep       # в тестах подменяются
         self._session = None
         os.makedirs(quarantine_dir, exist_ok=True)
 
@@ -167,12 +168,14 @@ class SafeHttp:
                                            allow_redirects=False, stream=True, verify=True)
 
     def _throttle(self, host: str) -> None:
+        """К одному сайту — не чаще раза в `min_interval` секунд, из скольких бы потоков ни шли запросы:
+        поток под замком занимает ближайшее свободное время сайта и ждёт его уже без замка."""
         with self._lock:
-            last = self._last.get(host, 0.0)
-            wait = self.min_interval - (time.time() - last)
-            self._last[host] = time.time() + max(0.0, wait)
-        if wait > 0:
-            time.sleep(wait)
+            now = self._clock()
+            at = max(now, self._last.get(host, now - self.min_interval) + self.min_interval)
+            self._last[host] = at
+        if at > now:
+            self._sleep(at - now)
 
     # ---------- запросы ----------
     def _request(self, url: str, max_bytes: int, method: str = "GET",

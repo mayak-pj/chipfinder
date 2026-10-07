@@ -94,3 +94,36 @@ def test_fetch_returns_status_and_truncates(tmp_path):
     fake = FakeHttp().add("https://www.ti.com/p", b"y" * 5000, status=403)
     r = make(tmp_path, fake).fetch("https://www.ti.com/p", max_bytes=1000)
     assert r["status"] == 403 and len(r["body"]) == 1000 and r["truncated"]
+
+
+def test_one_request_per_interval_per_domain_from_many_threads(tmp_path):
+    """Шаг 6.2: к одному сайту — не чаще 1 запроса в 1.5 с, сколько бы потоков ни спрашивало; сайты независимы."""
+    import logging
+    import threading
+    from collections import defaultdict
+
+    from chipfinder.core.netsafe import host_of
+    from fakes.fake_http import VirtualTime
+
+    vt, seen, lock = VirtualTime(), defaultdict(list), threading.Lock()
+
+    class Timed(FakeHttp):
+        def __call__(self, method, url, headers):
+            with lock:
+                seen[host_of(url)].append(vt.clock())
+            return FakeHttp.__call__(self, method, url, headers)
+
+    cfg = {"allowed_domains": ["ti.com", "st.com"], "min_interval_sec": 1.5}
+    http = SafeHttp(cfg, str(tmp_path / "q"), logging.getLogger("t"), transport=Timed())
+    http._clock, http._sleep = vt.clock, vt.sleep
+    urls = ["https://www.ti.com/p%d" % i for i in range(6)] + ["https://www.st.com/p%d" % i for i in range(3)]
+    threads = [threading.Thread(target=http.fetch, args=(u,)) for u in urls]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(seen["www.ti.com"]) == 6 and len(seen["www.st.com"]) == 3
+    for times in seen.values():
+        times.sort()
+        assert times[0] == vt.start                                   # первый запрос к сайту не ждёт
+        assert all(b - a >= 1.5 for a, b in zip(times, times[1:]))

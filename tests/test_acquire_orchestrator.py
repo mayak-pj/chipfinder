@@ -47,14 +47,15 @@ def env(tmp_path):
     return tmp_path, AcquireStore(db), pdf
 
 
-def build(env, fake, sources, **kw):
+def build(env, fake, sources, adapter=FakeSource, min_interval=0, **kw):
     tmp_path, store, _ = env
     bus = EventBus()
-    net = {"allowed_domains": ["ti.com", "alldatasheet.com", "datasheet4u.com", "a.example"], "min_interval_sec": 0}
+    net = {"allowed_domains": ["ti.com", "alldatasheet.com", "datasheet4u.com", "a.example"],
+           "min_interval_sec": min_interval}
     http = SafeHttp(net, str(tmp_path / "q"), logging.getLogger("t"), transport=fake)
     levels = list(dict.fromkeys(s["level"] for s in sources))
     registry = Registry({"levels": [{"id": lv} for lv in levels], "sources": sources}, bus=bus,
-                        adapters={"fake": FakeSource})
+                        adapters={"fake": adapter})
     orch = Orchestrator(registry, http, store, bus=bus, trust=TRUST, sleep=lambda s: None, **kw)
     return orch, bus
 
@@ -194,6 +195,7 @@ def test_from_context_runs_real_sources(ctx, tmp_path):
     bus = EventBus()
     orch = from_context(ctx, bus, http=http)
     assert (orch.budget.queries, orch.budget.downloads, orch.budget.seconds) == (60, 10, 180)
+    assert orch.parallel == 3
     assert http.is_allowed("https://www.ti.com/lit/ds/ne555.pdf")
     orch.budget = Budget(queries=25)
     orch.sleep = lambda s: None
@@ -203,3 +205,78 @@ def test_from_context_runs_real_sources(ctx, tmp_path):
     assert "error.internal" not in got and got[-2:] == ["search.limit", "result.not_found"]
     assert len(set(e.lang for e in bus.history())) >= 2 and fake.calls
     assert orch.recorder.stats.search_count() == 1               # статистика поиска записана
+
+
+# -------------------- шаг 6.2: параллельность --------------------
+
+def gauge_source():
+    """Источник, который считает, сколько таких же работает одновременно."""
+    import threading
+    import time
+
+    class Gauge(FakeSource):
+        lock, now, peak = threading.Lock(), 0, 0
+
+        def find(self, query, http):
+            with Gauge.lock:
+                Gauge.now += 1
+                Gauge.peak = max(Gauge.peak, Gauge.now)
+            time.sleep(0.05)
+            with Gauge.lock:
+                Gauge.now -= 1
+            return FakeSource.find(self, query, http)
+    return Gauge
+
+
+def test_sources_of_level_run_in_parallel_up_to_three(env):
+    names = "abcdef"
+    gauge = gauge_source()
+    fake = FakeHttp()
+    orch, bus = build(env, fake, [source("s" + n, "one", ALL % n) for n in names], adapter=gauge)
+    assert orch.parallel == 3
+    res = search(orch)
+    assert 1 < gauge.peak <= 3
+    assert (res.queries, res.sources) == (6, 6) and "error.internal" not in keys(bus)
+    asked = list(dict.fromkeys(u for _, u in fake.calls))
+    assert asked == [ALL % n for n in names[:4]]            # порядок ссылок — порядок источников, не потоков
+
+
+def test_parallel_one_is_sequential(env):
+    gauge = gauge_source()
+    orch, _ = build(env, FakeHttp(), [source("s" + n, "one", ALL % n) for n in "abc"], adapter=gauge, parallel=1)
+    search(orch)
+    assert gauge.peak == 1
+
+
+def test_parallel_sources_keep_domain_interval(env):
+    """Три источника уровня ходят на один сайт одновременно — запросы к нему всё равно через 1.5 с."""
+    import threading
+
+    from tests.fakes.fake_http import VirtualTime
+
+    vt, times, lock = VirtualTime(), [], threading.Lock()
+
+    class Timed(FakeHttp):
+        def __call__(self, method, url, headers):
+            with lock:
+                times.append(vt.clock())
+            return FakeHttp.__call__(self, method, url, headers)
+
+    fake = Timed()
+    sources = []
+    for n in "abc":
+        fake.add("https://a.example/find?q=" + n, "<html><body>ok</body></html>")
+        sources.append(source("s" + n, "one", open="https://a.example/find?q=" + n))
+    orch, bus = build(env, fake, sources, min_interval=1.5)
+    orch.http._clock, orch.http._sleep = vt.clock, vt.sleep
+    search(orch)
+    times.sort()
+    assert len(times) == 3 and times[0] == vt.start
+    assert all(b - a >= 1.5 for a, b in zip(times, times[1:]))
+
+
+def test_budget_event_once_from_parallel_sources(env):
+    orch, bus = build(env, FakeHttp(), [source("s" + n, "one", ALL % n) for n in "abcdef"],
+                      budget=Budget(queries=2))
+    res = search(orch)
+    assert res.reason == "budget" and keys(bus).count("search.limit") == 1
