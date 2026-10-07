@@ -7,7 +7,7 @@ import zipfile
 
 import pytest
 
-from chipfinder.modules.ocr_tesseract import find_tesseract
+from chipfinder.recognition.providers.tesseract import find_tesseract
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 bp = pytest.importorskip("build_portable", reason="нет tools/ (портативная сборка)")

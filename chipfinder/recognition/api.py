@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """Интерфейс провайдера распознавания (ARCHITECTURE §6.1).
 
-Новый способ распознавания = папка `recognition/providers/<id>/` или `plugins/ocr_<id>/provider.py`
-с классом `Provider(OcrProvider)`. Менеджер находит провайдера по id из `config → recognition.chain`.
+Новый способ распознавания = папка `recognition/providers/<id>/` (встроенный) или `plugins/ocr_<имя>/`
+(сторонний) с классом `Provider(OcrProvider)`. В папке стороннего два файла:
+  provider.json  {"id": "mine", "title": "Мой способ", "kind": "local"}   — id: строчные латинские, цифры, _
+  provider.py    class Provider(OcrProvider): ...
+Провайдер работает, когда его id стоит в `config → recognition.chain`; его настройки —
+`recognition.providers.<id>`. Код провайдера вне цепочки не выполняется. `kind: "cloud"` — провайдер
+вызывается только с согласия пользователя.
 """
 from __future__ import annotations
 

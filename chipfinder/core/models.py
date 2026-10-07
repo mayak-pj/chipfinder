@@ -23,6 +23,18 @@ class OcrLine:
     text: str
     confidence: float         # 0..100
     variant: str              # из какого варианта изображения
+    provider: str = ""        # id провайдера, прочитавшего строку
+
+
+@dataclass
+class OcrAttempt:
+    """Одна попытка провайдера в цепочке распознавания."""
+    provider: str
+    title: str = ""
+    status: str = ""          # ok | empty | failed | unavailable
+    seconds: float = 0.0
+    lines: int = 0
+    detail: str = ""          # причина для failed / unavailable
 
 
 @dataclass
@@ -32,7 +44,9 @@ class OcrResult:
     best_variant: str = ""
     provider: str = ""        # id провайдера распознавания (recognition/), пусто — введено вручную
     provider_title: str = ""
-    seconds: float = 0.0
+    seconds: float = 0.0      # время провайдера, давшего результат
+    total_seconds: float = 0.0  # время всей цепочки
+    attempts: List[OcrAttempt] = field(default_factory=list)
 
 
 @dataclass

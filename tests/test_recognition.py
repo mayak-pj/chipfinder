@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Менеджер провайдеров распознавания (шаг 0.8): выбор, цепочка при неудаче, правило 8/0, качество."""
+"""Менеджер провайдеров распознавания (шаги 0.8, 7.1a): выбор, цепочка при неудаче, сторонние провайдеры из
+plugins/ocr_*, объединение результатов и учёт времени, правило 8/0, качество."""
 import importlib.util
+import io
 import os
 import sys
-import types
 
 import pytest
 
 from chipfinder.core.models import ImageVariant, OcrLine, OcrResult
 from chipfinder.core.pipeline import ChipPipeline
 from chipfinder.core.utils import imread
+from chipfinder.recognition import manager as manager_module
 from chipfinder.recognition.api import OcrProvider
-from chipfinder.recognition.manager import RecognitionManager
+from chipfinder.recognition.manager import ProviderInfo, RecognitionManager
 
 HAS_PPOCR = all(importlib.util.find_spec(m) for m in ("onnxruntime", "rapidocr_onnxruntime"))
 needs_ppocr = pytest.mark.skipif(not HAS_PPOCR, reason="не установлен rapidocr-onnxruntime")
@@ -19,10 +21,11 @@ SAMPLES = {"at24c02.png": "24C02", "stm32.png": "STM32F103", "w25q64_rot.png": "
 MIN_MYTEST_PCT = 36.0   # таблица шага 0.7: ppocr_main auto 38.3 % на 120 вырезках
 
 
-def _provider(pid, text="", available=True, fail=False, original=False):
+def _provider(pid, text="", available=True, fail=False, original=False, cloud=False, lines=None):
     class Provider(OcrProvider):
         id = pid
         title = pid.upper()
+        kind = "cloud" if cloud else "local"
         wants_original = original
         calls = []
 
@@ -33,20 +36,45 @@ def _provider(pid, text="", available=True, fail=False, original=False):
             Provider.calls.append([v.name for v in variants])
             if fail:
                 raise RuntimeError("упал")
-            return OcrResult(lines=[OcrLine(text, 90.0, variants[0].name)] if text else [], best_text=text)
+            texts = lines if lines is not None else ([text] if text else [])
+            return OcrResult(lines=[OcrLine(t, 90.0, variants[0].name) for t in texts], best_text=text)
 
     return Provider
 
 
-def _manager(ctx, monkeypatch, **providers):
-    """Провайдеры-примеры подключаются как плагины `ocr_<id>/provider.py`."""
-    for pid, cls in providers.items():
-        mod = types.ModuleType("ocr_%s.provider" % pid)
-        mod.Provider = cls
-        monkeypatch.setitem(sys.modules, "ocr_%s" % pid, types.ModuleType("ocr_%s" % pid))
-        monkeypatch.setitem(sys.modules, "ocr_%s.provider" % pid, mod)
-    monkeypatch.setitem(ctx.config, "recognition", {"chain": list(providers), "providers": {}})
+def _manager(ctx, monkeypatch, chain=None, **providers):
+    """Провайдеры-примеры подставляются как сторонние (будто найдены в `plugins/ocr_<id>/`)."""
+    real_load = manager_module.load_provider_class
+    monkeypatch.setattr(manager_module, "discover_plugins",
+                        lambda folder: [ProviderInfo(id=pid, title=pid.upper()) for pid in providers])
+    monkeypatch.setattr(manager_module, "load_provider_class",
+                        lambda info: providers[info.id] if info.id in providers else real_load(info))
+    monkeypatch.setitem(ctx.config, "recognition", {"chain": chain or list(providers), "providers": {}})
     return RecognitionManager({}, ctx)
+
+
+def _write_plugin(plugins, folder, manifest, code):
+    path = os.path.join(str(plugins), folder)
+    os.makedirs(path)
+    with io.open(os.path.join(path, "provider.json"), "w", encoding="utf-8") as f:
+        f.write(manifest)
+    with io.open(os.path.join(path, "provider.py"), "w", encoding="utf-8") as f:
+        f.write(code)
+
+
+PLUGIN_CODE = u'''# -*- coding: utf-8 -*-
+from chipfinder.core.models import OcrLine, OcrResult
+from chipfinder.recognition.api import OcrProvider
+
+
+class Provider(OcrProvider):
+    id = "mine"
+    title = "Свой способ"
+
+    def recognize(self, variants, hints=None, progress=None):
+        text = self.settings.get("answer", "NE555")
+        return OcrResult(lines=[OcrLine(text, 88.0, variants[0].name)], best_text=text)
+'''
 
 
 VARIANTS = [ImageVariant("gray", None)]
@@ -81,12 +109,68 @@ def test_next_provider_when_first_fails(ctx, monkeypatch, first):
 
 
 def test_nothing_available(ctx, monkeypatch):
-    m = _manager(ctx, monkeypatch, exa=_provider("exa", available=False), nosuch=_provider("x"))
-    monkeypatch.delitem(sys.modules, "ocr_nosuch.provider")
-    m = RecognitionManager({}, ctx)
+    m = _manager(ctx, monkeypatch, chain=["exa", "nosuch"], exa=_provider("exa", available=False))
     assert not m.is_available()
     assert "exa" in m.error and "nosuch" in m.error
-    assert m.recognize(VARIANTS).best_text == ""
+    res = m.recognize(VARIANTS)
+    assert res.best_text == "" and [a.status for a in res.attempts] == ["unavailable", "unavailable"]
+
+
+def test_plugin_provider_found_and_chosen(ctx, monkeypatch, tmp_path):
+    """Папка `plugins/ocr_<имя>/` (provider.json + provider.py) в пути с русскими буквами и пробелом."""
+    app = tmp_path / "Папка программы"
+    _write_plugin(app / "plugins", "ocr_mine", u'{"id": "mine", "title": "Свой способ", "kind": "local"}', PLUGIN_CODE)
+    _write_plugin(app / "plugins", "ocr_broken", u'{"id": "broken"}', u"raise RuntimeError('сломан')\n")
+    _write_plugin(app / "plugins", "ocr_badjson", u"{не json", PLUGIN_CODE)
+    _write_plugin(app / "plugins", "ocr_other", u'{"id": "other", "title": "Не в цепочке"}', u"raise SystemExit\n")
+    monkeypatch.setattr(ctx, "app_dir", str(app))
+    monkeypatch.setitem(ctx.config, "recognition", {"chain": ["broken", "badjson", "mine", "tesseract"],
+                                                    "providers": {"mine": {"answer": "LM358"}}})
+    m = RecognitionManager({}, ctx)
+    by = {i.id: i for i in m.catalog()}
+    assert {"mine", "broken", "badjson", "other", "ppocr", "tesseract"} <= set(by)
+    assert (by["mine"].title, by["mine"].builtin, by["ppocr"].builtin) == (u"Свой способ", False, True)
+    assert by["other"].title == u"Не в цепочке" and not by["other"].error     # код вне цепочки не выполняется
+    assert "сломан" in m.problems["broken"] and "provider.json" in m.problems["badjson"]
+    res = m.recognize(VARIANTS)
+    assert (res.best_text, res.provider, res.provider_title) == ("LM358", "mine", u"Свой способ")
+    assert [(a.provider, a.status) for a in res.attempts] == [("broken", "unavailable"), ("badjson", "unavailable"),
+                                                              ("mine", "ok")]
+
+
+def test_plugin_cannot_replace_builtin(ctx, monkeypatch, tmp_path):
+    _write_plugin(tmp_path / "plugins", "ocr_fake", u'{"id": "tesseract", "title": "Подмена"}', PLUGIN_CODE)
+    monkeypatch.setattr(ctx, "app_dir", str(tmp_path))
+    m = RecognitionManager({}, ctx)
+    assert m.known["tesseract"].builtin and m.known["tesseract"].title == "Tesseract"
+
+
+def test_results_merged_and_timed(ctx, monkeypatch):
+    """Первый прочитал строки, но итога не дал → итог от второго, строки первого — запасными, без повторов."""
+    a = _provider("exa", "", lines=["W25Q64", "lm358"])
+    b = _provider("exb", "LM358", lines=["LM358", "2231"])
+    c = _provider("exc", "NE555")
+    m = _manager(ctx, monkeypatch, exa=a, exf=_provider("exf", fail=True), exb=b, exc=c)
+    res = m.recognize(VARIANTS)
+    assert (res.best_text, res.provider) == ("LM358", "exb")
+    assert [(l.text, l.provider) for l in res.lines] == [("LM358", "exb"), ("2231", "exb"), ("W25Q64", "exa")]
+    assert [(x.provider, x.status, x.lines) for x in res.attempts] == [("exa", "empty", 2), ("exf", "failed", 0),
+                                                                      ("exb", "ok", 2)]
+    assert "упал" in res.attempts[1].detail and not c.calls
+    assert res.total_seconds >= res.seconds >= 0
+    m.recognize(VARIANTS)
+    assert m.stats["exb"]["calls"] == 2 and m.stats["exb"]["ok"] == 2
+    assert m.stats["exa"]["empty"] == 2 and m.stats["exf"]["failed"] == 2 and "exc" not in m.stats
+
+
+def test_cloud_provider_not_called_without_consent(ctx, monkeypatch):
+    cloud = _provider("excloud", "NE555", cloud=True)
+    m = _manager(ctx, monkeypatch, excloud=cloud, exb=_provider("exb", "LM358"))
+    res = m.recognize(VARIANTS, original="фото")
+    assert res.provider == "exb" and not cloud.calls
+    assert res.attempts[0].status == "unavailable" and "согласия" in res.attempts[0].detail
+    m.cloud_consent = lambda provider: True
+    assert m.recognize(VARIANTS).provider == "excloud"
 
 
 def test_missing_ppocr_falls_back_to_tesseract(ctx, monkeypatch):
