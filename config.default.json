@@ -36,6 +36,8 @@
 
   "recognition": {
     "chain": ["ppocr", "tesseract"],
+    "auto": {"min_confidence": 60, "require_confirmed": false},
+    "cloud_enabled": false,
     "providers": {
       "ppocr": {"text_score": 0.3, "det_box_thresh": 0.3, "det_unclip_ratio": 1.8, "rotations": [0, 90, 180, 270]},
       "tesseract": {}

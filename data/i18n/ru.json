@@ -76,5 +76,15 @@
   "result.not_found": "итог: НЕ НАЙДЕНО — проверено {sources:источник|источника|источников} ({queries:запрос|запроса|запросов}, {seconds} с)",
 
   "photo.recognized": "фото распознано: {part}",
+  "ocr.start": "распознаю: {provider}",
+  "ocr.next": "пробую следующий способ: {provider}",
+  "ocr.ok": "{provider}: прочитано, уверенность {conf} %",
+  "ocr.weak": "{provider} — уверенность {conf} %, ниже порога {min} %",
+  "ocr.unconfirmed": "{provider} — уверенность {conf} %, партномер не подтвердился справочником",
+  "ocr.empty": "{provider} — ничего не прочитано",
+  "ocr.failed": "{provider} — ошибка: {reason}",
+  "ocr.unavailable": "{provider} недоступен: {reason}",
+  "ocr.no_consent": "{provider}: фото не отправлено — нет согласия на отправку",
+  "ocr.fallback": "уверенного результата нет — взято прочитанное способом {provider}",
   "error.internal": "ошибка программы на этапе {stage}: {error}"
 }

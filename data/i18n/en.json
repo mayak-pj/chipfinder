@@ -76,5 +76,15 @@
   "result.not_found": "Result: NOT FOUND — {sources:source|sources} checked ({queries:query|queries}, {seconds} s)",
 
   "photo.recognized": "Photo recognized: {part}",
+  "ocr.start": "Recognizing: {provider}",
+  "ocr.next": "Trying the next method: {provider}",
+  "ocr.ok": "{provider}: read, confidence {conf}%",
+  "ocr.weak": "{provider} — confidence {conf}%, below the {min}% threshold",
+  "ocr.unconfirmed": "{provider} — confidence {conf}%, part number not confirmed by the reference",
+  "ocr.empty": "{provider} — nothing read",
+  "ocr.failed": "{provider} — error: {reason}",
+  "ocr.unavailable": "{provider} unavailable: {reason}",
+  "ocr.no_consent": "{provider}: photo not sent — no consent to send",
+  "ocr.fallback": "No confident result — using the text read by {provider}",
   "error.internal": "Program error at stage {stage}: {error}"
 }

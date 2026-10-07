@@ -31,7 +31,8 @@ class OcrAttempt:
     """Одна попытка провайдера в цепочке распознавания."""
     provider: str
     title: str = ""
-    status: str = ""          # ok | empty | failed | unavailable
+    status: str = ""          # ok | weak | unconfirmed | empty | failed | unavailable | no_consent
+    confidence: float = 0.0   # 0..100
     seconds: float = 0.0
     lines: int = 0
     detail: str = ""          # причина для failed / unavailable
@@ -45,6 +46,8 @@ class OcrResult:
     provider: str = ""        # id провайдера распознавания (recognition/), пусто — введено вручную
     provider_title: str = ""
     seconds: float = 0.0      # время провайдера, давшего результат
+    confidence: float = 0.0   # 0..100, средняя по строкам итоговой маркировки
+    confirmed: bool = False   # партномер из прочитанного подтверждён справочником, каталогом или локальной базой
     total_seconds: float = 0.0  # время всей цепочки
     attempts: List[OcrAttempt] = field(default_factory=list)
 
@@ -58,6 +61,7 @@ class Candidate:
     reason: str = ""          # откуда взялся (OCR, замена O->0, справочник...)
     description: str = ""     # из справочника, если есть
     is_marking_code: bool = False  # короткий SMD-код, а не партномер
+    confirmed_by: str = ""    # чем подтверждён: справочник | каталог | локальная база; пусто — ничем
 
 
 @dataclass

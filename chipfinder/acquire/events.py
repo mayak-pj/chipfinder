@@ -55,9 +55,13 @@ KEYS = {
     "result.rejected": "fail", "result.not_found": "empty",
     "error.internal": "fail",
     "photo.recognized": "ok",       # публикует окно после распознавания фото (для расширений)
+    # цепочка распознавания (recognition/manager.py)
+    "ocr.start": "", "ocr.next": "", "ocr.ok": "ok", "ocr.weak": "fail", "ocr.unconfirmed": "fail",
+    "ocr.empty": "empty", "ocr.failed": "fail", "ocr.unavailable": "skip", "ocr.no_consent": "skip",
+    "ocr.fallback": "ok",
 }
 # итог поиска и ошибки программы показываются по-русски, на каком бы языке ни шёл поиск
-ALWAYS_RU = ("result.", "search.", "error.", "photo.")
+ALWAYS_RU = ("result.", "search.", "error.", "photo.", "ocr.")
 
 _ZH_SOURCES = ("baidu", "bing_cn", "sogou", "so360", "lcsc", "szlcsc", "semiee", "taobao", "1688", "aliexpress")
 _RU_SOURCES = ("yandex", "chipdip", "promelec", "efo", "ozon")

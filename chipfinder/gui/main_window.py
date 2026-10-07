@@ -21,7 +21,7 @@ from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
-from .worker import Job
+from .worker import ConsentBridge, Job
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 PACKAGES = ["", "SOP-8", "SOIC-8", "DIP-8", "TSSOP-8", "MSOP-8", "SOT-23-5", "SOT-23-6", "DFN-8", "WSON-8",
@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
         self.ctx = None
         self.pipe = None
         self.ext = None          # ExtensionManager
+        self.consent = ConsentBridge(self)   # вопрос об отправке фото облачному способу распознавания
         self._ext_widgets = []   # вкладки, панели, пункты меню и кнопки расширений
         self._ext_jobs = []
         self.ext_failed.connect(self._ext_failed, Qt.QueuedConnection)
@@ -270,6 +271,9 @@ class MainWindow(QMainWindow):
                     mod.close()
             self.ctx = create_context(self.app_dir)
             self.pipe = ChipPipeline(self.ctx)
+            ocr = self.ctx.modules.get("ocr")
+            if hasattr(ocr, "consent"):
+                ocr.consent.ask = self.consent.ask
             self._load_extensions()
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():

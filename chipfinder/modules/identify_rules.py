@@ -196,6 +196,7 @@ class RuleIdentifier(Identifier):
                 info = self.rules.match(v)
                 ext = self._lookup_external(v) if (v == tok or v == fixed or info) else None
                 desc, maker = "", manufacturer_hint
+                confirmed_by = "справочник" if info else ("каталог" if ext else "")
                 if info:
                     s += 0.3
                     desc = info["family"]
@@ -209,12 +210,13 @@ class RuleIdentifier(Identifier):
                     loc = self._local_best(v)
                     if loc >= 0.95:
                         s += 0.25
+                        confirmed_by = confirmed_by or "локальная база"
                         reason += ", есть в локальной базе"
                     elif loc >= 0.8:
                         s += 0.15
                         reason += ", семейство есть в локальной базе"
                 short = len(v) <= 5 and not info and not ext
-                push(v, s, reason, manufacturer=maker, description=desc,
+                push(v, s, reason, manufacturer=maker, description=desc, confirmed_by=confirmed_by,
                      is_marking_code=short and total_tokens <= 4)
 
         # Полный партномер точнее его начала: "STM32F103C8T6" важнее "STM32F103"

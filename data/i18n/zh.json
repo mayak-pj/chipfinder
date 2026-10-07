@@ -76,5 +76,15 @@
   "result.not_found": "结果：未找到 — 已检查 {sources} 个来源（{queries} 次查询，{seconds} 秒）",
 
   "photo.recognized": "照片已识别：{part}",
+  "ocr.start": "正在识别：{provider}",
+  "ocr.next": "尝试下一种方法：{provider}",
+  "ocr.ok": "{provider}：已读取，置信度 {conf}%",
+  "ocr.weak": "{provider} — 置信度 {conf}%，低于阈值 {min}%",
+  "ocr.unconfirmed": "{provider} — 置信度 {conf}%，型号未被参考库确认",
+  "ocr.empty": "{provider} — 未读取到内容",
+  "ocr.failed": "{provider} — 错误：{reason}",
+  "ocr.unavailable": "{provider} 不可用：{reason}",
+  "ocr.no_consent": "{provider}：照片未发送 — 未获得发送许可",
+  "ocr.fallback": "没有可靠结果 — 采用 {provider} 读取的内容",
   "error.internal": "程序在 {stage} 阶段出错：{error}"
 }

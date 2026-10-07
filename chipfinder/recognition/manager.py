@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """Менеджер провайдеров распознавания — реализация роли `ocr`.
 
-Цепочка из `config → recognition.chain`: следующий провайдер пробуется, если текущий недоступен,
-упал или ничего не прочитал. О конкретных провайдерах менеджер не знает — встроенные находит в
+Цепочка «Авто» из `config → recognition.chain`: следующий провайдер пробуется, если текущий недоступен,
+упал, ничего не прочитал, прочитал с уверенностью ниже порога или (если включено `require_confirmed`)
+ни один кандидат партномера из прочитанного не подтвердился справочником, каталогом или локальной
+базой (`recognition.auto`).
+Облачный провайдер вызывается только если облако включено в настройках и пользователь согласился
+отправить фото (`consent.py`). Ход цепочки — события `ocr.*`. О конкретных провайдерах менеджер не знает — встроенные находит в
 `recognition/providers/`, сторонние — в `plugins/ocr_<имя>/` (provider.json + provider.py).
 Результат несёт список попыток (`OcrResult.attempts`) и строки всех отработавших провайдеров;
 время и исходы копятся в `RecognitionManager.stats`.
@@ -18,18 +22,33 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from ..acquire.events import EventBus, render
 from ..core.config import read_json
 from ..core.interfaces import OCR, ProgressFn
 from ..core.models import ImageVariant, OcrAttempt, OcrResult
 from . import providers as builtin_package
 from .api import OcrProvider
+from .consent import CloudConsent
 
 DEFAULT_CHAIN = ["ppocr", "tesseract"]
 PLUGIN_PREFIX = "ocr_"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 KINDS = ("local", "cloud")
+RAN = ("ok", "weak", "unconfirmed", "empty", "failed")      # исходы, при которых провайдер работал
+
+
+def _alnum(s: str) -> int:
+    return len(re.findall(r"[A-Za-z0-9]", s))
+
+
+def result_confidence(res: OcrResult) -> float:
+    """Средняя уверенность строк итоговой маркировки (вес — число букв и цифр), 0..100."""
+    chosen = {t.strip() for t in res.best_text.splitlines() if t.strip()}
+    lines = [l for l in res.lines if l.text.strip() in chosen] or res.lines
+    weight = sum(max(1, _alnum(l.text)) for l in lines)
+    return round(sum(l.confidence * max(1, _alnum(l.text)) for l in lines) / weight, 1) if weight else 0.0
 
 
 @dataclass
@@ -104,9 +123,12 @@ class RecognitionManager(OCR):
         self.known: Dict[str, ProviderInfo] = {}
         self.providers: Dict[str, OcrProvider] = {}
         self.problems: Dict[str, str] = {}      # id → почему не работает
-        self.stats: Dict[str, Dict[str, float]] = {}   # id → calls / ok / empty / failed / seconds
-        # согласие на отправку фото облачному провайдеру; пока его некому дать — облако не вызывается
-        self.cloud_consent: Callable[[OcrProvider], bool] = lambda provider: False
+        self.stats: Dict[str, Dict[str, float]] = {}   # id → calls / seconds / число каждого исхода
+        auto = cfg.get("auto", {})
+        self.min_confidence = float(auto.get("min_confidence", 60))
+        self.require_confirmed = bool(auto.get("require_confirmed", False))
+        self.cloud_enabled = bool(cfg.get("cloud_enabled", False))
+        self.consent = CloudConsent()   # спрашивает окно; пока спрашивать некому — облако не вызывается
         self._lock = threading.Lock()
         self._discover(os.path.join(ctx.app_dir, "plugins"))
         for pid in self.chain:
@@ -157,12 +179,16 @@ class RecognitionManager(OCR):
         info = self.known.get(pid)
         return (info.title if info else "") or pid
 
+    def _is_cloud(self, pid: str) -> bool:
+        return self.known[pid].kind == "cloud"
+
     def _available(self, pid: str) -> Tuple[bool, str]:
+        """Можно ли пробовать провайдера (согласие на отправку здесь не спрашивается)."""
         p = self.providers.get(pid)
         if p is None:
             return False, self.problems.get(pid, "нет такого провайдера")
-        if self.known[pid].kind == "cloud" and not self.cloud_consent(p):
-            ok, why = False, "облачный провайдер: нет согласия пользователя на отправку фото"
+        if self._is_cloud(pid) and not self.cloud_enabled:
+            ok, why = False, "облачные способы выключены в настройках"
         else:
             try:
                 ok, why = p.is_available()
@@ -182,29 +208,61 @@ class RecognitionManager(OCR):
     # -------------------- распознавание --------------------
     def _count(self, attempt: OcrAttempt) -> None:
         with self._lock:
-            st = self.stats.setdefault(attempt.provider, {"calls": 0, "ok": 0, "empty": 0, "failed": 0, "seconds": 0.0})
+            st = self.stats.setdefault(attempt.provider, {"calls": 0, "seconds": 0.0})
             st["calls"] += 1
-            st[attempt.status] += 1
+            st[attempt.status] = st.get(attempt.status, 0) + 1
             st["seconds"] = round(st["seconds"] + attempt.seconds, 3)
+
+    def _confirmed(self, res: OcrResult) -> bool:
+        """Есть ли среди кандидатов партномера подтверждённый справочником, каталогом или локальной базой."""
+        ident = self.ctx.module("identifier")
+        if ident is None:
+            return False
+        try:
+            cands = ident.identify(res.best_text, [l.text for l in res.lines if l.confidence >= 40])
+        except Exception:  # noqa
+            self.ctx.log.exception("Проверка прочитанного по справочнику не удалась")
+            return False
+        return any(getattr(c, "confirmed_by", "") for c in cands)
+
+    def _judge(self, res: OcrResult) -> str:
+        if not res.best_text.strip():
+            return "empty"
+        res.confidence = result_confidence(res)
+        res.confirmed = self._confirmed(res)
+        if res.confidence < self.min_confidence:
+            return "weak"
+        return "ok" if res.confirmed or not self.require_confirmed else "unconfirmed"
 
     def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None,
                   original=None) -> OcrResult:
-        say = progress or (lambda m: None)
+        if self.ctx.bus is None:
+            self.ctx.bus = EventBus()
+
+        def emit(key: str, pid: str, **params: Any) -> None:
+            event = self.ctx.bus.emit(key, lang="ru", source=pid, provider=self._title(pid), **params)
+            if progress:
+                progress(render(event))
+
         attempts: List[OcrAttempt] = []
         done: List[OcrResult] = []      # результаты отработавших провайдеров, по порядку цепочки
         for pid in self.chain:
+            attempt = OcrAttempt(pid, self._title(pid))
+            attempts.append(attempt)
             ok, why = self._available(pid)
             if not ok:
-                self.ctx.log.info("Распознавание: %s недоступен (%s)", pid, why)
-                attempts.append(OcrAttempt(pid, self._title(pid), "unavailable", detail=why))
+                attempt.status, attempt.detail = "unavailable", why
+                emit("ocr.unavailable", pid, reason=why)
+                continue
+            if self._is_cloud(pid) and not self.consent.allowed(pid, attempt.title):
+                attempt.status = "no_consent"
+                emit("ocr.no_consent", pid)
                 continue
             p = self.providers[pid]
             imgs = variants
             if p.wants_original and original is not None:
                 imgs = [ImageVariant(name="original", image=original)]
-            say("Распознаю: %s" % self._title(pid))
-            attempt = OcrAttempt(pid, self._title(pid))
-            attempts.append(attempt)
+            emit("ocr.next" if done else "ocr.start", pid)
             t0 = time.perf_counter()
             try:
                 res = p.recognize(imgs, hints={}, progress=progress)
@@ -214,27 +272,37 @@ class RecognitionManager(OCR):
                 self.problems[pid] = "ошибка: %s" % e
                 self.ctx.log.exception("Провайдер распознавания %s упал", pid)
                 self._count(attempt)
+                emit("ocr.failed", pid, reason=attempt.detail)
                 continue
             attempt.seconds = round(time.perf_counter() - t0, 3)
             attempt.lines = len(res.lines)
-            attempt.status = "ok" if res.best_text.strip() else "empty"
-            self._count(attempt)
             res.provider, res.provider_title, res.seconds = pid, attempt.title, attempt.seconds
             for line in res.lines:
                 line.provider = pid
-            self.ctx.log.info("Распознавание: %s, %.2f с, строк %d", pid, res.seconds, len(res.lines))
+            attempt.status = self._judge(res)
+            attempt.confidence = res.confidence
+            self._count(attempt)
+            self.ctx.log.info("Распознавание: %s, %.2f с, строк %d, уверенность %.0f, исход %s",
+                              pid, res.seconds, len(res.lines), res.confidence, attempt.status)
+            emit("ocr." + attempt.status, pid, conf=int(round(res.confidence)), min=int(self.min_confidence))
             done.append(res)
             if attempt.status == "ok":
-                break
-        return self._merge(done, attempts)
+                return self._merge(res, done, attempts)
+        # никто не справился: подтверждённый справочником, иначе первый по цепочке, кто что-то прочитал
+        read = [r for r in done if r.best_text.strip()]
+        best = next((r for r in read if r.confirmed), read[0] if read else (done[-1] if done else OcrResult()))
+        if read:
+            emit("ocr.fallback", best.provider)
+        return self._merge(best, done, attempts)
 
     @staticmethod
-    def _merge(done: List[OcrResult], attempts: List[OcrAttempt]) -> OcrResult:
-        """Итог — результат последнего отработавшего провайдера (он либо прочитал, либо цепочка кончилась);
-        строки остальных добавляются после его строк — как запасные варианты для выбора партномера."""
-        result = done[-1] if done else OcrResult()
+    def _merge(result: OcrResult, done: List[OcrResult], attempts: List[OcrAttempt]) -> OcrResult:
+        """К строкам итога добавляются строки остальных отработавших провайдеров (без повторов) —
+        как запасные варианты для выбора партномера."""
         seen = {line.text.strip().upper() for line in result.lines}
-        for other in done[:-1]:
+        for other in done:
+            if other is result:
+                continue
             for line in other.lines:
                 key = line.text.strip().upper()
                 if key and key not in seen:

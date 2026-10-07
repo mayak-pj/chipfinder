@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Менеджер провайдеров распознавания (шаги 0.8, 7.1a): выбор, цепочка при неудаче, сторонние провайдеры из
-plugins/ocr_*, объединение результатов и учёт времени, правило 8/0, качество."""
+"""Менеджер провайдеров распознавания (шаги 0.8, 7.1a, 7.1b): выбор, цепочка «Авто» (порог уверенности,
+подтверждение справочником), сторонние провайдеры из plugins/ocr_*, объединение результатов и учёт времени,
+облако только с согласия, заглушка облака, правило 8/0, качество."""
 import importlib.util
 import io
 import os
@@ -8,6 +9,7 @@ import sys
 
 import pytest
 
+from chipfinder.acquire.events import EventBus, render
 from chipfinder.core.models import ImageVariant, OcrLine, OcrResult
 from chipfinder.core.pipeline import ChipPipeline
 from chipfinder.core.utils import imread
@@ -21,7 +23,7 @@ SAMPLES = {"at24c02.png": "24C02", "stm32.png": "STM32F103", "w25q64_rot.png": "
 MIN_MYTEST_PCT = 36.0   # таблица шага 0.7: ppocr_main auto 38.3 % на 120 вырезках
 
 
-def _provider(pid, text="", available=True, fail=False, original=False, cloud=False, lines=None):
+def _provider(pid, text="", available=True, fail=False, original=False, cloud=False, lines=None, conf=90.0):
     class Provider(OcrProvider):
         id = pid
         title = pid.upper()
@@ -37,20 +39,29 @@ def _provider(pid, text="", available=True, fail=False, original=False, cloud=Fa
             if fail:
                 raise RuntimeError("упал")
             texts = lines if lines is not None else ([text] if text else [])
-            return OcrResult(lines=[OcrLine(t, 90.0, variants[0].name) for t in texts], best_text=text)
+            return OcrResult(lines=[OcrLine(t, conf, variants[0].name) for t in texts], best_text=text)
 
     return Provider
 
 
-def _manager(ctx, monkeypatch, chain=None, **providers):
+def _manager(ctx, monkeypatch, chain=None, cloud_enabled=False, **providers):
     """Провайдеры-примеры подставляются как сторонние (будто найдены в `plugins/ocr_<id>/`)."""
     real_load = manager_module.load_provider_class
     monkeypatch.setattr(manager_module, "discover_plugins",
                         lambda folder: [ProviderInfo(id=pid, title=pid.upper()) for pid in providers])
     monkeypatch.setattr(manager_module, "load_provider_class",
                         lambda info: providers[info.id] if info.id in providers else real_load(info))
-    monkeypatch.setitem(ctx.config, "recognition", {"chain": chain or list(providers), "providers": {}})
+    monkeypatch.setitem(ctx.config, "recognition", {"chain": chain or list(providers), "providers": {},
+                                                    "cloud_enabled": cloud_enabled})
     return RecognitionManager({}, ctx)
+
+
+def _feed(ctx):
+    """Лента: тексты событий цепочки распознавания."""
+    ctx.bus = EventBus()
+    seen = []
+    ctx.bus.subscribe(lambda e: seen.append(render(e)) if e.kind == "ocr" else None)
+    return seen
 
 
 def _write_plugin(plugins, folder, manifest, code):
@@ -163,14 +174,104 @@ def test_results_merged_and_timed(ctx, monkeypatch):
     assert m.stats["exa"]["empty"] == 2 and m.stats["exf"]["failed"] == 2 and "exc" not in m.stats
 
 
+def test_weak_confidence_goes_to_next(ctx, monkeypatch):
+    """Провайдер-неудачник: уверенность ниже порога → следующий; ход виден в ленте."""
+    feed = _feed(ctx)
+    said = []
+    m = _manager(ctx, monkeypatch, exa=_provider("exa", "NE555", conf=42.0), exb=_provider("exb", "LM358"))
+    res = m.recognize(VARIANTS, progress=said.append)
+    assert (res.best_text, res.provider, res.confidence, res.confirmed) == ("LM358", "exb", 90.0, True)
+    assert [(a.provider, a.status, a.confidence) for a in res.attempts] == [("exa", "weak", 42.0), ("exb", "ok", 90.0)]
+    assert feed == [u"распознаю: EXA", u"EXA — уверенность 42 %, ниже порога 60 %",
+                    u"пробую следующий способ: EXB", u"EXB: прочитано, уверенность 90 %"]
+    assert said == feed and m.stats["exa"]["weak"] == 1
+
+
+def test_unconfirmed_goes_to_next(ctx, monkeypatch):
+    """Партномер из прочитанного не подтвердился справочником → следующий провайдер."""
+    feed = _feed(ctx)
+    m = _manager(ctx, monkeypatch, exa=_provider("exa", "QZX7719KW"), exb=_provider("exb", "LM358"))
+    assert m.recognize(VARIANTS).provider == "exa"          # по умолчанию правило выключено (см. «Решения»)
+    del feed[:]
+    m.require_confirmed = True
+    res = m.recognize(VARIANTS)
+    assert (res.provider, res.attempts[0].status) == ("exb", "unconfirmed")
+    assert u"партномер не подтвердился справочником" in feed[1]
+    assert [l.text for l in res.lines] == ["LM358", "QZX7719KW"]
+
+
+def test_nobody_confident_keeps_first_reading(ctx, monkeypatch):
+    """Никто не справился: берётся подтверждённый справочником, иначе первый по цепочке, кто что-то прочитал."""
+    feed = _feed(ctx)
+    m = _manager(ctx, monkeypatch, exe=_provider("exe"), exa=_provider("exa", "QZX7719KW"),
+                 exb=_provider("exb", "PKV0042JJ", conf=99.0))
+    m.require_confirmed = True
+    res = m.recognize(VARIANTS)
+    assert (res.provider, res.confirmed) == ("exa", False)
+    assert [a.status for a in res.attempts] == ["empty", "unconfirmed", "unconfirmed"]
+    assert feed[-1] == u"уверенного результата нет — взято прочитанное способом EXA"
+    m = _manager(ctx, monkeypatch, exa=_provider("exa", "QZX7719KW", conf=50.0), exb=_provider("exb", "LM358", conf=30.0))
+    assert m.recognize(VARIANTS).provider == "exb"          # оба слабые, но второй подтверждён справочником
+
+
+def test_auto_rules_can_be_switched_off(ctx, monkeypatch):
+    m = _manager(ctx, monkeypatch, exa=_provider("exa", "QZX7719KW", conf=20.0), exb=_provider("exb", "LM358"))
+    m.min_confidence, m.require_confirmed = 0.0, False
+    assert m.recognize(VARIANTS).provider == "exa"
+
+
 def test_cloud_provider_not_called_without_consent(ctx, monkeypatch):
     cloud = _provider("excloud", "NE555", cloud=True)
+    asked = []
+    answers = ["no", "once", "session"]
+
+    def ask(pid, title):
+        asked.append((pid, title))
+        return answers.pop(0)
+
+    # облако выключено в настройках — не вызывается и согласие не спрашивается
     m = _manager(ctx, monkeypatch, excloud=cloud, exb=_provider("exb", "LM358"))
+    m.consent.ask = ask
     res = m.recognize(VARIANTS, original="фото")
-    assert res.provider == "exb" and not cloud.calls
-    assert res.attempts[0].status == "unavailable" and "согласия" in res.attempts[0].detail
-    m.cloud_consent = lambda provider: True
-    assert m.recognize(VARIANTS).provider == "excloud"
+    assert res.provider == "exb" and res.attempts[0].status == "unavailable" and not asked and not cloud.calls
+    # включено, но спросить некого (нет окна) — не вызывается
+    feed = _feed(ctx)
+    m = _manager(ctx, monkeypatch, cloud_enabled=True, excloud=cloud, exb=_provider("exb", "LM358"))
+    assert m.recognize(VARIANTS).attempts[0].status == "no_consent" and not cloud.calls
+    assert feed[0] == u"EXCLOUD: фото не отправлено — нет согласия на отправку"
+    # ответ «нет» → не вызывается; «это фото» → один раз; «на сессию» → дальше без вопросов
+    m.consent.ask = ask
+    assert m.recognize(VARIANTS).provider == "exb" and not cloud.calls
+    assert m.recognize(VARIANTS).provider == "excloud" and len(cloud.calls) == 1
+    assert m.recognize(VARIANTS).provider == "excloud" and len(asked) == 3
+    assert m.recognize(VARIANTS).provider == "excloud" and len(asked) == 3 and len(cloud.calls) == 3
+    m.consent.revoke()
+    answers.append("no")
+    assert m.recognize(VARIANTS).provider == "exb" and asked[-1] == ("excloud", "EXCLOUD")
+
+
+def test_cloud_stub_is_not_configured(ctx, monkeypatch):
+    """Заглушка облака: видна в списке способов, в цепочке по умолчанию её нет, согласие для неё не спрашивается."""
+    assert "cloud_stub" not in ctx.modules["ocr"].chain
+    asked = []
+    monkeypatch.setitem(ctx.config, "recognition", {"chain": ["cloud_stub", "exb"], "cloud_enabled": True})
+    m = _manager(ctx, monkeypatch, chain=["cloud_stub", "exb"], cloud_enabled=True, exb=_provider("exb", "LM358"))
+    m.consent.ask = lambda pid, title: asked.append(pid) or "session"
+    info = {i.id: i for i in m.catalog()}["cloud_stub"]
+    assert (info.kind, info.builtin) == ("cloud", True) and m.is_available()
+    res = m.recognize(VARIANTS)
+    assert res.provider == "exb" and not asked
+    assert (res.attempts[0].status, res.attempts[0].detail) == ("unavailable", u"не настроено")
+
+
+def test_removed_cloud_stub_breaks_nothing(ctx, monkeypatch):
+    """Папку `providers/cloud_stub/` удалили: программа работает, а её id в цепочке просто пропускается."""
+    monkeypatch.setattr(manager_module, "builtin_ids", lambda: ["ppocr", "tesseract"])
+    m = _manager(ctx, monkeypatch, chain=["cloud_stub", "exb"], cloud_enabled=True, exb=_provider("exb", "LM358"))
+    assert "cloud_stub" not in [i.id for i in m.catalog()]
+    assert m.recognize(VARIANTS).provider == "exb" and "cloud_stub" in m.error
+    monkeypatch.setitem(ctx.config, "recognition", {})
+    assert RecognitionManager({}, ctx).chain == ["ppocr", "tesseract"]
 
 
 def test_missing_ppocr_falls_back_to_tesseract(ctx, monkeypatch):
@@ -235,3 +336,30 @@ def test_mytest_ocr_share(ctx, my_test_dir):
     print("\nmy_test/ocr: %d фото, строка совпала — %.1f %%, строка содержит ответ — %.1f %%"
           % (len(items), pct, 100.0 * inside / len(items)))
     assert pct >= MIN_MYTEST_PCT
+
+
+def test_window_asks_consent_from_background_thread(ctx, monkeypatch):
+    """Окно: распознавание идёт в фоне, вопрос об отправке фото задаётся в потоке окна."""
+    import threading
+    if sys.platform != "win32":
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    pytest.importorskip("PyQt5")
+    from PyQt5.QtWidgets import QApplication
+    from chipfinder.gui.worker import ConsentBridge
+    app = QApplication.instance() or QApplication([])
+    bridge = ConsentBridge()
+    shown = []
+    monkeypatch.setattr(bridge, "dialog", lambda title: shown.append((title, threading.current_thread().name)) or "once")
+    cloud = _provider("excloud", "NE555", cloud=True)
+    m = _manager(ctx, monkeypatch, cloud_enabled=True, excloud=cloud)
+    m.consent.ask = bridge.ask
+    got = []
+    worker = threading.Thread(target=lambda: got.append(m.recognize(VARIANTS)), name="фон")
+    worker.start()
+    for _ in range(500):
+        app.processEvents()
+        worker.join(0.01)
+        if not worker.is_alive():
+            break
+    assert got and got[0].provider == "excloud"
+    assert shown == [("EXCLOUD", threading.current_thread().name)]
