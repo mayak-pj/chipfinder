@@ -19,10 +19,11 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # остальные проверки — по алфавиту после этих
-ORDER = ["sysinfo", "selftest", "window", "ppocr_check", "program_ocr", "sites", "adapters", "downloads", "live"]
+ORDER = ["sysinfo", "selftest", "window", "ppocr_check", "program_ocr", "sites", "adapters", "downloads", "screens", "live"]
 SKIP_FILES = {"run_checks", "live_check"}
 MAX_LOG = 5 * 1024 * 1024
 TODO_FILE = "ЧТО СДЕЛАТЬ.txt"
+NOTES_FILE = "впечатления.txt"      # пользователь пишет впечатления от окна; файл попадает в отчёт
 
 
 def default_app_dir(here=HERE):
@@ -228,6 +229,11 @@ def build_report(app_dir, out_dir, results, todo, checks_dir=HERE):
         f.write(todo_text)
     path = free_zip_path(app_dir)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for base in (app_dir, os.path.join(app_dir, "checks")):          # «впечатления.txt» рядом с программой
+            notes = os.path.join(base, NOTES_FILE)
+            if os.path.isfile(notes):
+                z.write(notes, NOTES_FILE)
+                break
         for d, _dirs, files in os.walk(out_dir):
             for fn in sorted(files):
                 p = os.path.join(d, fn)

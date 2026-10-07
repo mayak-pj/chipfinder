@@ -135,12 +135,23 @@ def check_files():
         if fn.endswith((".py", ".txt")) and not fn.startswith("test_"):
             out.append((os.path.join(CHECKS_SRC, fn), "checks/" + fn))
     out.append((os.path.join(ROOT, "tools", "live_check.py"), "checks/live_check.py"))     # проверка live
+    for fn in ("screenshots.py", "search_cli.py"):                                          # проверка screens
+        out.append((os.path.join(ROOT, "tools", fn), "checks/" + fn))
     return out
 
 
 PHOTOS_DIR = "фото"
 PHOTOS_NOTE = "ПОЛОЖИТЕ ФОТО СЮДА.txt"
 VISIT_GUIDE = "ИНСТРУКЦИЯ ДЛЯ ВЫЕЗДА.txt"
+NOTES_FILE = "впечатления.txt"
+NOTES_TEXT = ("Впечатления от программы (Win7). Пишите своими словами, коротко; файл сам попадёт в отчёт.\n"
+              "Что смотреть - в «ИНСТРУКЦИЯ ДЛЯ ВЫЕЗДА.txt», раздел «ЧТО ПОСМОТРЕТЬ ГЛАЗАМИ».\n\n"
+              "Окно открывается, текст читается, ничего не обрезано:\n\n"
+              "Светлая / тёмная тема (Настройки -> тема, после перезапуска):\n\n"
+              "Распознавание своих фото (что нашло, что нет):\n\n"
+              "Лента поиска, вкладки «Заключение», «Документы», «Журнал»:\n\n"
+              "Скорость, зависания, ошибки:\n\n"
+              "Остальное:\n")
 
 
 def make_visit_files(app):
@@ -151,6 +162,8 @@ def make_visit_files(app):
         f.write("Сюда кладутся фото чипов для проверки распознавания («Проверка на работе.bat»).\n"
                 "Формат: JPG или PNG (HEIC с телефона не читается). Подпапки можно.\n"
                 "Имя файла = правильная маркировка, например: W25Q64JVSIQ.jpg\n")
+    with open(os.path.join(app, NOTES_FILE), "w", encoding="utf-8-sig", newline="\r\n") as f:
+        f.write(NOTES_TEXT)
     with open(os.path.join(CHECKS_SRC, "ЧТО СДЕЛАТЬ.txt"), encoding="utf-8") as f:
         guide = f.read()
     with open(os.path.join(app, VISIT_GUIDE), "w", encoding="utf-8-sig", newline="\r\n") as f:

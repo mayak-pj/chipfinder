@@ -224,3 +224,38 @@ def test_ask_for_photos_gives_up_and_survives_closed_input(tmp_path):
         raise EOFError
 
     assert rc.ask_for_photos(str(app), ask=closed, log=lambda s: None, opener=lambda p: None) == 0
+
+
+def test_screens_check_in_order_and_build():
+    import screens
+    assert "screens" in rc.ORDER and rc.ORDER.index("screens") < rc.ORDER.index("live")
+    assert screens._tool().endswith("screenshots.py")
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+    import build_portable
+    dst = [d for _s, d in build_portable.check_files()]
+    assert "checks/screens.py" in dst and "checks/screenshots.py" in dst and "checks/search_cli.py" in dst
+
+
+def test_screens_check_runs(tmp_path):
+    pytest.importorskip("PyQt5")
+    import screens
+    root = os.path.dirname(os.path.dirname(PACK.rstrip(os.sep)))
+    work = tmp_path / "w"
+    work.mkdir()
+    ctx = rc.Context(root, str(work), "screens")
+    ctx.photos_dir = str(tmp_path / "нет")
+    os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    res = screens.run(ctx)
+    assert res["status"] == "ok", res
+    assert res["themes"]["light"] > 5 and res["themes"]["dark"] > 5
+
+
+def test_notes_file_goes_into_report(tmp_path):
+    import zipfile
+    app = tmp_path / "прог"
+    out = tmp_path / "out"
+    app.mkdir()
+    out.mkdir()
+    (app / "впечатления.txt").write_text("окно ок", encoding="utf-8")
+    z = rc.build_report(str(app), str(out), [], [], str(tmp_path))
+    assert "впечатления.txt" in zipfile.ZipFile(z).namelist()

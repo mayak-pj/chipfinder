@@ -38,12 +38,27 @@ def make_app_dir(theme: str) -> str:
     return app_dir
 
 
+PHOTO_EXT = (".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".tif", ".tiff", ".webp")
+PHOTOS_DIR = ""             # --photos: свои фото вместо образцов (проверка `screens` на рабочем ПК)
+MAX_PHOTOS = 4
+
+
 def sample_photos():
+    if PHOTOS_DIR and os.path.isdir(PHOTOS_DIR):
+        found = []
+        for d, dirs, files in os.walk(PHOTOS_DIR):
+            dirs.sort()
+            found += [os.path.join(d, f) for f in sorted(files) if f.lower().endswith(PHOTO_EXT)]
+        if found:
+            return found[:MAX_PHOTOS]
     d = os.path.join(ROOT, "tests", "samples")
     if not os.path.isdir(d):
-        sys.path.insert(0, os.path.join(ROOT, "tests"))
-        import make_samples
-        make_samples.main()
+        try:
+            sys.path.insert(0, os.path.join(ROOT, "tests"))
+            import make_samples
+            make_samples.main()
+        except Exception:       # noqa — в сборке для Win7 нет tests/: окно снимается без фото
+            return []
     return [os.path.join(d, n) for n in SAMPLES if os.path.isfile(os.path.join(d, n))]
 
 
@@ -235,8 +250,11 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=os.path.join(ROOT, "my_reports", "screens"))
     ap.add_argument("--prefix", default="window")
     ap.add_argument("--themes", default="light")
+    ap.add_argument("--photos", default="", help=u"папка со своими фото (первые 4) вместо образцов")
     ap.add_argument("--no-ocr", action="store_true", help=u"не распознавать образец (быстрее)")
     args = ap.parse_args(argv)
+    global PHOTOS_DIR
+    PHOTOS_DIR = args.photos
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PyQt5.QtCore import QCoreApplication
     from PyQt5.QtWidgets import QApplication, QMessageBox
