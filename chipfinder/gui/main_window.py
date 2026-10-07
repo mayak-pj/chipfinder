@@ -97,6 +97,7 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
         act("Сохранить отчёт", "file-text", self.save_report)
         act("Сводка CSV", "table", self.save_summary)
+        act("Настройки", "settings", self.settings, "Тема, папки, сеть, поиск")
 
         mb = self.menuBar()
         m = mb.addMenu("Файл")
@@ -104,6 +105,8 @@ class MainWindow(QMainWindow):
         m.addAction("Сохранить отчёт (HTML)…", self.save_report)
         m.addAction("Сводка по всем фото (CSV для Excel)…", self.save_summary)
         m.addSeparator()
+        a = m.addAction("Настройки…", self.settings)
+        a.setMenuRole(QAction.NoRole)            # на Mac Qt иначе уносит «Настройки» в меню приложения
         m.addAction("Выход", self.close)
         m = mb.addMenu("База")
         m.addAction("Индексировать папки с datasheet", self.index_db)
@@ -117,7 +120,8 @@ class MainWindow(QMainWindow):
         m.addAction("Журнал сетевых обращений", lambda: self._open_path(
             os.path.join(resolve_path(self.app_dir, self.ctx.config["paths"]["log_dir"]), "network_audit.log")))
         m.addAction("Папка карантина", lambda: self._open_path(resolve_path(self.app_dir, self.ctx.config["paths"]["quarantine_dir"])))
-        mb.addAction("Настройки…", self.settings)
+        a = mb.addAction("Настройки…", self.settings)
+        a.setMenuRole(QAction.NoRole)
         m = mb.addMenu("Расширения")
         m.addAction("Управление расширениями…", self.show_extensions)
         m.addSeparator()
