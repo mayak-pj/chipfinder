@@ -4,7 +4,9 @@
 Один поиск: библиотека → уровни из `sources.json` по порядку. На уровне спрашиваются все источники, новые
 ссылки ранжируются, лучшие проходят путь «страница → PDF → карантин → проверка файла → сверка → подтверждение
 → библиотека». Остановка: документ подтверждён (§4.5), исчерпан бюджет, отмена; «искать везде» остановку по
-результату пропускает, бюджет — нет. Ход — только событиями (§4.8). Запросы считаются по событиям шины,
+результату пропускает, бюджет — нет. Порядок уровней и источников внутри уровня — по умолчанию из `sources.json`
+или адаптивный, по статистике (`adaptive.py`, §4.10); ранжирование ссылок от него не зависит.
+Ход — только событиями (§4.8). Запросы считаются по событиям шины,
 неудачи доступа (`access.*`, §4.11) собираются в `SearchResult.failures` для заключения.
 `search()` исключений не бросает: сбой источника или этапа — событие `error.internal`, поиск идёт дальше.
 """
@@ -79,7 +81,8 @@ class Orchestrator:
                  thresholds: Optional[Mapping[str, Any]] = None, weights: Optional[Mapping[str, Any]] = None,
                  tracker: Optional[BlockTracker] = None, access: Any = None, learner: Any = None,
                  recorder: Any = None, max_mb: float = MAX_MB, clock: Callable[[], float] = time.monotonic,
-                 sleep: Optional[Callable[[float], Any]] = None, parallel: int = PARALLEL) -> None:
+                 sleep: Optional[Callable[[float], Any]] = None, parallel: int = PARALLEL,
+                 adaptive: Any = None) -> None:
         self.registry, self.http, self.store = registry, http, store
         self.bus = bus if bus is not None else EventBus()
         self.trust = trust or SourceTrust()
@@ -89,6 +92,7 @@ class Orchestrator:
         self.thresholds, self.weights, self.max_mb = thresholds, weights, max_mb
         self.tracker = tracker or BlockTracker()
         self.access, self.learner, self.recorder = access, learner, recorder   # access.py, learn.py, stats.py
+        self.adaptive = adaptive                       # adaptive.py: порядок по статистике; None — по умолчанию
         self.clock = clock
         self.parallel = max(1, int(parallel))
         self._cancel = threading.Event()
@@ -168,8 +172,9 @@ class Orchestrator:
         plan = plan_queries(self._res.part, self.langs, maker=ctx.manufacturer)
         order = [lv["id"] for lv in self.registry.levels()]
         base = base_part(ctx.part)
-        for level in order:
-            leads = self._ask(self.registry.build(level), plan)
+        adapters = {level: self.registry.build(level) for level in order}
+        for level in self._order(order, adapters):
+            leads = self._ask(adapters[level], plan)
             fresh = []
             for lead in leads:
                 key = normalize_url(lead.url)
@@ -194,6 +199,25 @@ class Orchestrator:
                 return
 
     # -------------------- источники --------------------
+    def _order(self, order: List[str], adapters: Dict[str, List[Any]]) -> List[str]:
+        """Порядок обхода уровней; адаптивный (§4.10) переставляет и источники внутри уровня."""
+        if self.adaptive is None:
+            return order
+        try:
+            found = self.adaptive.plan([(lv, [a.id for a in adapters[lv]]) for lv in order], self._res.part)
+        except Exception as e:       # noqa: BLE001 — статистика не должна мешать поиску
+            log.exception("адаптивный порядок")
+            self._emit("error.internal", "ru", stage="order", error=str(e) or type(e).__name__)
+            return order
+        if not found.adaptive:
+            return order
+        self._emit("search.order_adaptive", n=found.searches)
+        if found.explored:
+            self._emit("search.order_explore", source=found.explored, name=found.explored)
+        for level, ids in found.sources.items():
+            adapters[level].sort(key=lambda a: ids.index(a.id))
+        return found.levels
+
     def _queries(self, adapter: Any, plan: List[Query]) -> List[Query]:
         """Поисковику — запросы его языка (или всех трёх); сайту — один запрос с партномером."""
         if adapter.family == "engine":
@@ -338,6 +362,7 @@ class Orchestrator:
 def from_context(ctx: Any, bus: Optional[EventBus] = None, http: Any = None, db: Any = None) -> Orchestrator:
     """Оркестратор по настройкам программы: `sources.json`, `config.json → acquire`, общая база и библиотека."""
     from .access import AccessLog
+    from .adaptive import AdaptiveOrder
     from .learn import Learner
     from .registry import Registry
     from .stats import SearchStats, StatsRecorder
@@ -352,9 +377,11 @@ def from_context(ctx: Any, bus: Optional[EventBus] = None, http: Any = None, db:
     db = db or ctx.module("local_db")
     store = AcquireStore(db)
     learner = Learner(store)
+    stats = SearchStats(db)
     return Orchestrator(
         registry, http, store, bus=bus, trust=learner.trust(SourceTrust.from_sources(registry.data)),
         owners=confirm_mod.owners_from_sources(registry.data), budget=Budget(**acq.get("budget", {})),
         langs=acq.get("languages"), thresholds=acq.get("thresholds"), weights=acq.get("weights"),
-        access=AccessLog(db), learner=learner, recorder=StatsRecorder(SearchStats(db), bus),
+        access=AccessLog(db), learner=learner, recorder=StatsRecorder(stats, bus),
+        adaptive=AdaptiveOrder(stats, **acq.get("adaptive", {})),
         max_mb=float(cfg.get("network", {}).get("max_pdf_mb", MAX_MB)), parallel=int(acq.get("parallel", PARALLEL)))

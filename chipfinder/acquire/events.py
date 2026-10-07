@@ -50,6 +50,7 @@ KEYS = {
     "access.site_protected": "fail", "access.network_blocked": "fail", "access.not_whitelisted": "skip",
     "access.transient": "fail", "access.unknown": "fail",
     "search.cancelled": "skip", "search.budget": "skip", "search.limit": "skip",
+    "search.order_adaptive": "", "search.order_explore": "",
     "result.confirmed": "ok", "result.probable": "ok", "result.needs_user": "ok",
     "result.rejected": "fail", "result.not_found": "empty",
     "error.internal": "fail",

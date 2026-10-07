@@ -99,6 +99,20 @@ class SearchStats:
         """Сколько поисков записано (адаптивный порядок включается после 20)."""
         return self._all("SELECT COUNT(*) FROM search_runs")[0][0]
 
+    def network_searches(self) -> int:
+        """Поиски, дошедшие до источников (документ из своей библиотеки об источниках ничего не говорит)."""
+        return self._all("SELECT COUNT(DISTINCT run_id) FROM source_runs WHERE source<>'local'")[0][0]
+
+    def totals(self, family: str = "") -> Dict[str, Dict[str, Any]]:
+        """Суммы по источникам для адаптивного порядка: попытки, поиски с подтверждением, запросы, секунды до
+        подтверждения (только успешных поисков). `family` — только поиски этого семейства."""
+        where, args = (" WHERE family=?", (family,)) if family else ("", ())
+        rows = self._all(
+            "SELECT source, COUNT(*), SUM(confirmed>0), SUM(queries), SUM(CASE WHEN confirmed>0 THEN t_confirm END) "
+            "FROM source_runs%s GROUP BY source" % where, args)
+        return {src: {"attempts": n, "wins": wins or 0, "queries": queries or 0, "seconds": seconds or 0.0}
+                for src, n, wins, queries, seconds in rows}
+
     def metrics(self, by: str = "", source: str = "") -> List[Dict[str, Any]]:
         """Показатели источников: в целом (`by=""`) или в разрезе `family` / `lang` / `maker`.
 
