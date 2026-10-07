@@ -411,7 +411,8 @@ class MainWindow(QMainWindow):
 
     def is_idle(self) -> bool:
         """Нет ни идущих задач, ни недоставленных в окно событий."""
-        return not (self.job and self.job.isRunning() or self._bg_jobs
+        job_busy = self.job and (self.job.isRunning() or not self.job.wait(0))    # поток ещё отправляет done/finished
+        return not (job_busy or self._bg_jobs
                     or self.feed.pending() or self.thumb_feed.pending())
 
     def stop_job(self):
