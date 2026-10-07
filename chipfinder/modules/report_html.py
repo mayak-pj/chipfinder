@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import html
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import cv2
 
@@ -14,9 +14,35 @@ from ..core.interfaces import Reporter
 from ..core.models import ChipReport, ImageVariant
 from ..core.utils import imread
 
+LIGHT_COLORS = {"link": "#2563eb", "text": "#222", "border": "#ddd", "th": "#f3f3f3", "muted": "#777", "yes_bg": "#fde8e8", "yes_fg": "#8a1c1c",
+                "no_bg": "#e8f5e9", "no_fg": "#1b5e20", "unk_bg": "#eee", "img": "#ccc", "ok": "#1a7f37", "fail": "#c62828",
+                "warn": "#b26a00"}
+CSS = """<html><head><meta charset="utf-8"><style>
+body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:%(text)s;margin:12px}
+h2{margin:6px 0 10px;font-size:18px} h3{margin:16px 0 6px;font-size:15px;border-bottom:1px solid %(border)s}
+table{border-collapse:collapse} td,th{border:1px solid %(border)s;padding:4px 7px;vertical-align:top;text-align:left}
+th{background:%(th)s} .big{font-size:16px;font-weight:bold;padding:8px;border-radius:4px}
+.yes{background:%(yes_bg)s;color:%(yes_fg)s} .no{background:%(no_bg)s;color:%(no_fg)s} .unk{background:%(unk_bg)s;color:%(text)s}
+.muted{color:%(muted)s} img{border:1px solid %(img)s;margin:4px} a{color:%(link)s}
+</style></head><body>"""
 STATUS = {"ok": ("✔", "#1a7f37"), "fail": ("✘", "#c62828"), "warn": ("!", "#b26a00"), "unknown": ("?", "#666")}
 LEVEL_RU = {"local": "Локальная база", "catalog": "Каталог datasheet", "maker": "Производитель",
             "china": "Китай", "forum": "Форум", "marking": "SMD-коды", "github": "GitHub"}
+
+
+def _mix(a: str, b: str, k: float) -> str:
+    """Цвет `a` с долей `k` цвета `b` (оба — #rrggbb)."""
+    pa, pb = [[int(x[i:i + 2], 16) for i in (1, 3, 5)] for x in (a, b)]
+    return "#%02x%02x%02x" % tuple(int(round(u + (v - u) * k)) for u, v in zip(pa, pb))
+
+
+def colors_from_tokens(t: Dict[str, object]) -> Dict[str, str]:
+    """Цвета отчёта из токенов темы окна: тёмная тема — тёмные таблицы и плашки, а не белые вставки."""
+    g = lambda k: str(t[k])  # noqa: E731
+    return {"text": g("text"), "border": g("border"), "th": g("surface_alt"), "muted": g("text_muted"),
+            "yes_bg": _mix(g("surface"), g("danger"), 0.25), "yes_fg": g("danger"),
+            "no_bg": _mix(g("surface"), g("success"), 0.22), "no_fg": g("success"), "unk_bg": g("surface_alt"),
+            "img": g("border_strong"), "ok": g("success"), "fail": g("danger"), "warn": g("warning"), "link": g("accent")}
 
 
 def _img_tag(img, max_w=420) -> str:
@@ -29,7 +55,18 @@ def _img_tag(img, max_w=420) -> str:
     return '<img src="data:image/png;base64,%s">' % base64.b64encode(buf.tobytes()).decode()
 
 
-OCR_STATUS = {"ok": "прочитано", "weak": "низкая уверенность", "unconfirmed": "не подтверждено справочником",
+OCR_LIGHT_COLORS = {"text": "#222", "border": "#ddd", "th": "#f3f3f3", "muted": "#777", "yes_bg": "#fde8e8", "yes_fg": "#8a1c1c",
+                "no_bg": "#e8f5e9", "no_fg": "#1b5e20", "unk_bg": "#eee", "img": "#ccc", "ok": "#1a7f37", "fail": "#c62828",
+                "warn": "#b26a00"}
+CSS = """<html><head><meta charset="utf-8"><style>
+body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:%(text)s;margin:12px}
+h2{margin:6px 0 10px;font-size:18px} h3{margin:16px 0 6px;font-size:15px;border-bottom:1px solid %(border)s}
+table{border-collapse:collapse} td,th{border:1px solid %(border)s;padding:4px 7px;vertical-align:top;text-align:left}
+th{background:%(th)s} .big{font-size:16px;font-weight:bold;padding:8px;border-radius:4px}
+.yes{background:%(yes_bg)s;color:%(yes_fg)s} .no{background:%(no_bg)s;color:%(no_fg)s} .unk{background:%(unk_bg)s;color:%(text)s}
+.muted{color:%(muted)s} img{border:1px solid %(img)s;margin:4px} a{color:%(link)s}
+</style></head><body>"""
+STATUS = {"ok": "прочитано", "weak": "низкая уверенность", "unconfirmed": "не подтверждено справочником",
               "empty": "ничего не прочитано", "failed": "ошибка", "unavailable": "недоступен",
               "no_consent": "нет согласия на отправку фото"}
 
@@ -86,15 +123,11 @@ def _conclusion_html(c) -> List[str]:
 class HtmlReport(Reporter):
     name = "html"
 
-    def render(self, r: ChipReport, variants: Optional[List[ImageVariant]] = None) -> str:
-        out = ["""<html><head><meta charset="utf-8"><style>
-body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#222;margin:12px}
-h2{margin:6px 0 10px;font-size:18px} h3{margin:16px 0 6px;font-size:15px;border-bottom:1px solid #ddd}
-table{border-collapse:collapse} td,th{border:1px solid #ddd;padding:4px 7px;vertical-align:top;text-align:left}
-th{background:#f3f3f3} .big{font-size:16px;font-weight:bold;padding:8px;border-radius:4px}
-.yes{background:#fde8e8;color:#8a1c1c} .no{background:#e8f5e9;color:#1b5e20} .unk{background:#eee}
-.muted{color:#777} img{border:1px solid #ccc;margin:4px}
-</style></head><body>"""]
+    def render(self, r: ChipReport, variants: Optional[List[ImageVariant]] = None,
+               colors: Optional[Dict[str, str]] = None) -> str:
+        """`colors` — цвета темы окна (имена токенов `ui/theme/tokens.py`); в файл отчёта идёт светлый вариант."""
+        c = dict(LIGHT_COLORS, **(colors or {}))
+        out = [CSS % c]
         out.append("<h2>Чип: %s</h2>" % e(r.chosen_part or "не определён"))
         out.append('<div class="muted">Фото: %s</div>' % e(r.image_path))
 
@@ -119,6 +152,7 @@ th{background:#f3f3f3} .big{font-size:16px;font-weight:bold;padding:8px;border-r
             out.append("<table><tr><th></th><th>Проверка</th><th>Результат</th></tr>")
             for ch in c.checks:
                 sym, col = STATUS.get(ch.status, STATUS["unknown"])
+                col = c.get({"ok": "ok", "fail": "fail", "warn": "warn"}.get(ch.status, "muted"), col)
                 out.append("<tr><td style='color:%s;font-weight:bold'>%s</td><td>%s</td><td>%s</td></tr>"
                            % (col, sym, e(ch.name), e(ch.detail)))
             out.append("</table>")
@@ -157,9 +191,9 @@ th{background:#f3f3f3} .big{font-size:16px;font-weight:bold;padding:8px;border-r
             out.append("<h3>Найденные документы (%d)</h3>" % len(r.hits))
             out.append("<table><tr><th>Где</th><th>Источник</th><th>Название</th><th>Оценка</th><th>Адрес</th></tr>")
             for h in r.hits[:40]:
-                flag = "" if h.allowed else " <span style='color:#b26a00'>(вне белого списка)</span>"
+                flag = "" if h.allowed else " <span style='color:%s'>(вне белого списка)</span>"
                 out.append("<tr><td>%s</td><td>%s</td><td>%s%s</td><td>%d%%</td><td style='word-break:break-all'>%s</td></tr>"
-                           % (e(LEVEL_RU.get(h.level, h.level)), e(h.source), e(h.title), flag,
+                           % (e(LEVEL_RU.get(h.level, h.level)), e(h.source), e(h.title), flag % c["warn"] if flag else "",
                               int(h.score * 100), e(h.location)))
             out.append("</table>")
         out.extend(_conclusion_html(r.conclusion))

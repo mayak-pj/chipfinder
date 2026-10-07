@@ -161,7 +161,17 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
             time.sleep(0.01)
         save(w, name("feed"))
         w.search_feed.set_running(False)
-        for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w))):
+        from chipfinder.gui.dialogs import AdaptersDialog, DiagnosticsDialog
+        diag = DiagnosticsDialog([{"ok": True, "category": u"Каталог", "name": "alldatasheet", "detail": "200", "url": "https://x.example"},
+                                  {"ok": False, "category": u"Производитель", "name": "ti.com", "detail": "DNS", "url": "https://ti.com"}], w)
+        ada = AdaptersDialog([{"status": "ok", "level": "catalog", "name": "alldatasheet", "leads": 3, "pdfs": 1, "detail": ""},
+                              {"status": "captcha", "level": "web", "name": "bing", "leads": 0, "pdfs": 0, "detail": ""}], w)
+        w.tabs.setCurrentIndex(3)                               # «Журнал»
+        w.log(u"Пример строки журнала")
+        app.processEvents()
+        save(w, name("log"))
+        for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w)),
+                          ("diagnostics", diag), ("adapters", ada)):
             dlg.show()
             app.processEvents()
             save(dlg, name(part))

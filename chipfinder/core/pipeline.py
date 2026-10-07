@@ -204,5 +204,11 @@ class ChipPipeline:
         if r.memory:
             self._say(r, progress, "Память: %s" % r.memory.summary)
 
-    def render(self, r: ChipReport, variants=None) -> str:
+    def render(self, r: ChipReport, variants=None, colors=None) -> str:
+        """`colors` — цвета темы окна; модуль отчёта, не знающий этого параметра, рисует по-старому."""
+        if colors:
+            try:
+                return self.m["report"].render(r, variants, colors=colors)
+            except TypeError:
+                pass
         return self.m["report"].render(r, variants)

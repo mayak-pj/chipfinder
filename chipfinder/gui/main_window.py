@@ -685,7 +685,8 @@ class MainWindow(QMainWindow):
         self._show_why()
         if not r:
             self.marking.setPlainText("")
-            self.report_view.setHtml("<p style='color:#777'>Фото ещё не распознано. Нажмите «Распознать».</p>")
+            self.report_view.setHtml("<p style='color:%s'>Фото ещё не распознано. Нажмите «Распознать».</p>"
+                                      % self.theme.color("text_muted"))
             return
         self.marking.setPlainText(r.ocr.best_text if r.ocr else "")
         for i, c in enumerate(r.candidates):
@@ -704,7 +705,7 @@ class MainWindow(QMainWindow):
         self.pins.setValue(r.chip.pins or 0)
         for box in (self.part_box, self.pkg_box):
             box.lineEdit().setCursorPosition(0)
-        self.report_view.setHtml(self.pipe.render(r, d["variants"]))
+        self.report_view.setHtml(self.pipe.render(r, d["variants"], self._report_colors()))
         self._fill_hits(r)
 
     def _update_header(self, *_):
@@ -763,6 +764,11 @@ class MainWindow(QMainWindow):
         added = allow_domain(self.ctx.modules["web_search"].http, self.app_dir, note.site)
         self.log("Домен «%s» разрешён; искать заново — кнопкой «Искать…»" % note.site if added
                  else "Домен «%s» уже разрешён" % note.site)
+
+    def _report_colors(self):
+        """Цвета отчёта в окне — из темы (в файл отчёта идёт светлый вариант)."""
+        from ..modules.report_html import colors_from_tokens
+        return colors_from_tokens(self.theme.t)
 
     def _fill_hits(self, r):
         self.hits_model.set_hits(r.hits, r.datasheet_path)

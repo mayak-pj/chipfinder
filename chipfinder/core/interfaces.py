@@ -111,7 +111,8 @@ class MemoryAnalyzer(Module):
 
 
 class Reporter(Module):
-    def render(self, report: ChipReport, variants: Optional[List[ImageVariant]] = None) -> str:
+    def render(self, report: ChipReport, variants: Optional[List[ImageVariant]] = None, colors=None) -> str:
+        """`colors` — необязательный словарь цветов темы окна (см. `modules/report_html.colors_from_tokens`)."""
         raise NotImplementedError
 
 

@@ -16,7 +16,7 @@ from test_photo_cards import _report  # noqa: E402
 from chipfinder.acquire.conclusion import Conclusion, SiteNote  # noqa: E402
 from chipfinder.acquire.site_actions import add_to_access_request, allow_domain  # noqa: E402
 from chipfinder.core.netsafe import SafeHttp  # noqa: E402
-from chipfinder.modules.report_html import HtmlReport  # noqa: E402
+from chipfinder.modules.report_html import HtmlReport, colors_from_tokens  # noqa: E402
 
 
 def _conclusion():
@@ -95,3 +95,15 @@ def test_settings_theme_choice(window):
     d.theme_box.setCurrentIndex(d.theme_box.findData("dark"))
     d._save()
     assert ui_theme.configured_theme(w.app_dir) == "dark"
+
+
+def test_report_follows_dark_theme():
+    from chipfinder.ui.theme import tokens
+    r = _report("a.png", "NE555P", "yes")
+    r.conclusion = _conclusion()
+    light = HtmlReport({}, None).render(r)
+    dark = HtmlReport({}, None).render(r, None, colors_from_tokens(tokens.tokens("dark")))
+    assert "#f3f3f3" in light and "#ddd" in light
+    for white in ("#f3f3f3", "#ddd", "#fde8e8", "#e8f5e9", "#eee", "color:#222"):
+        assert white not in dark
+    assert tokens.DARK["surface_alt"] in dark and tokens.DARK["text"] in dark
