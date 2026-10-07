@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PyQt5.QtCore import QPointF, QRectF, QSize, Qt
+from PyQt5.QtCore import QEvent, QPointF, QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QFontMetrics, QImage, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (QComboBox, QFormLayout, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,
                              QSizePolicy, QSpinBox, QVBoxLayout, QWidget)
@@ -51,6 +51,10 @@ class PhotoView(QWidget):
 
     def text(self) -> str:
         return self._text
+
+    def image(self) -> Optional[QImage]:
+        """Исходная картинка; None — показан текст."""
+        return self._image
 
     def pixmap(self) -> Optional[QPixmap]:
         """Картинка в том размере, в каком она показана; None — показан текст."""
@@ -118,6 +122,7 @@ class StateTag(QWidget):
 
 class ChipCard(QFrame):
     """Заголовок, фото с выбором варианта обработки и поля: маркировка, способ, партномер, корпус."""
+    user_edit = pyqtSignal()         # пользователь сам правит поля или выбирает в списках (а не программа их заполняет)
 
     def __init__(self, theme, parent=None):
         super().__init__(parent)
@@ -204,6 +209,16 @@ class ChipCard(QFrame):
         body.addWidget(self.fields)
         root.addLayout(body, 1)
         self.set_header("", "", "new")
+        for box in (self.variant_box, self.part_box, self.pkg_box):
+            box.activated.connect(lambda _i: self.user_edit.emit())
+        for w in (self.marking, self.part_box, self.part_box.lineEdit(), self.pkg_box, self.pkg_box.lineEdit(),
+                  self.pins, self.variant_box):
+            w.installEventFilter(self)
+
+    def eventFilter(self, obj, e):
+        if e.type() in (QEvent.KeyPress, QEvent.Wheel):
+            self.user_edit.emit()
+        return False
 
     def set_header(self, name: str, part: str, state: str, package: str = "", pins: int = 0, tip: str = "") -> None:
         """Заголовок: партномер (пока его нет — имя файла), метка состояния, корпус и число выводов."""

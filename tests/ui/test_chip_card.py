@@ -83,6 +83,8 @@ def test_card_header_follows_photo(window, tmp_path, monkeypatch):
     assert w.card.tag.text() == u"распознаю…" and w.card.title.text() == "a.png"
     go.set()
     _pump(app, lambda: w.is_idle() and not w.queue and w.photos.status(b)[0] == "no_memory")
+    assert w.current_path() == b                             # окно шло за очередью (шаг 7.4c) — вернёмся к первому
+    w.list.setCurrentRow(0)
     assert (w.card.title.text(), w.card.tag.text(), w.card.package.text()) == \
         ("W25Q64JV", u"память", u"SOP-8 · выводов: 8")
     w.list.setCurrentRow(1)

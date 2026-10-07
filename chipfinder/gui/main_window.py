@@ -49,6 +49,9 @@ class MainWindow(QMainWindow):
         self._ext_widgets = []   # вкладки, панели, пункты меню и кнопки расширений
         self._bg_jobs = []       # короткие фоновые задачи: диск, миниатюры, расширения
         self._previews = OrderedDict()       # путь → готовая картинка для карточки (последние PREVIEW_CACHE)
+        self._loading = set()                # фото для карточки, которые сейчас читаются в фоне
+        self.follow = False                  # окно идёт за фото, которое сейчас распознаётся (шаг 7.4c)
+        self._flip = False                   # идёт «перелистывание»: прежнее фото остаётся, пока не готово новое
         self.pool = TaskPool(parent=self)    # все фоновые задачи окна и расширений
         self.feed = Coalescer(parent=self)   # ход работы и события шины из фоновых потоков — пачками
         self.feed.flushed.connect(self._feed_batch)
@@ -130,10 +133,20 @@ class MainWindow(QMainWindow):
         self.list = PhotoList(self.add_files)
         self.list.setModel(self.photos)
         self.list.selectionModel().currentChanged.connect(self.show_current)
+        self.list.user_action.connect(self._follow_off)
         ll.addWidget(self.list)
         rm = QPushButton(ico("trash-2"), "Убрать из списка")
         rm.clicked.connect(self.remove_selected)
-        ll.addWidget(rm)
+        self.b_follow = QPushButton(ico("eye"), "Следить")
+        self.b_follow.setCheckable(True)
+        self.b_follow.setToolTip("Пока идёт распознавание, список и карточка сами переходят к фото, которое сейчас\n"
+                                 "проверяется. Выключается, когда вы сами выбираете фото, прокручиваете список\n"
+                                 "или правите поля; эта кнопка включает снова.")
+        self.b_follow.clicked.connect(self._follow_clicked)
+        lb = QHBoxLayout()
+        lb.addWidget(rm, 1)
+        lb.addWidget(self.b_follow)
+        ll.addLayout(lb)
         split.addWidget(left)
 
         # справа — карточка чипа; её поля доступны и под прежними именами окна
@@ -146,6 +159,7 @@ class MainWindow(QMainWindow):
         self.card.b_part.clicked.connect(self.choose_part)
         self.card.b_apply.clicked.connect(self.apply_chip)
         self.photos.dataChanged.connect(self._update_header)
+        self.card.user_edit.connect(self._follow_off)
 
         self.tabs = QTabWidget()
         self.report_view = QTextBrowser()
@@ -393,6 +407,8 @@ class MainWindow(QMainWindow):
             self.log("Нет новых фото. Выделите фото, чтобы распознать повторно.")
             return
         self.queue = list(sel)
+        if self.ctx.config.get("ui", {}).get("follow_recognition", True):
+            self._set_follow(True)
         self._next_in_queue()
 
     def _next_in_queue(self):
@@ -413,6 +429,41 @@ class MainWindow(QMainWindow):
 
         if self.start_job(work, self._analyzed, path):
             self._working(path, "busy")
+            self._follow_to(path)
+            if self.queue:
+                self._preload(self.queue[0])             # следующее фото — заранее: смена без пустого кадра
+
+    # ------------------------------------------------------------ живое распознавание
+    def _set_follow(self, on):
+        self.follow = bool(on)
+        self.b_follow.setChecked(self.follow)
+
+    def _follow_off(self):
+        """Пользователь сам выбрал фото, прокрутил список или правит поля — его не перебиваем."""
+        if self.follow:
+            self._set_follow(False)
+
+    def _follow_clicked(self, on):
+        self._set_follow(on)
+        if on and self.job and self.job.isRunning() and self.job.photo:
+            self._follow_to(self.job.photo)
+
+    def _follow_to(self, path):
+        """Список и карточка переходят к фото, над которым идёт работа (только смена строки и картинка из кэша)."""
+        row = self.photos.row(path) if self.follow else -1
+        if row < 0:
+            return
+        self._flip = True
+        try:
+            self.list.follow_row(row)
+        finally:
+            self._flip = False
+
+    def _preload(self, path):
+        if path in self._previews or path in self._loading:
+            return
+        self._loading.add(path)
+        self._bg(lambda progress, cancel: (path, load_qimage(path, PREVIEW[0], PREVIEW[1])), self._photo_loaded)
 
     def recognize_again(self):
         """Текущее фото ещё раз — способом, выбранным в списке."""
@@ -603,11 +654,13 @@ class MainWindow(QMainWindow):
             self._previews.move_to_end(path)
             self.img_label.setImage(self._previews[path])
             return
-        self.img_label.setText("…")
-        self._bg(lambda progress, cancel: (path, load_qimage(path, PREVIEW[0], PREVIEW[1])), self._photo_loaded)
+        if not (self._flip and self.img_label.image() is not None):
+            self.img_label.setText("…")
+        self._preload(path)
 
     def _photo_loaded(self, res):
         path, image = res
+        self._loading.discard(path)
         if image is not None:
             self._previews[path] = image
             while len(self._previews) > PREVIEW_CACHE:

@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from PyQt5.QtCore import QRectF, QSize, Qt
+from PyQt5.QtCore import QEasingCurve, QItemSelectionModel, QPropertyAnimation, QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 from PyQt5.QtWidgets import QAbstractItemView, QListView, QStyle, QStyledItemDelegate
 
@@ -16,6 +16,7 @@ from .models import NAME_ROLE, PART_ROLE, PHOTO_STATES, STATE_ROLE, THUMB
 CARD_GAP = SPACE["sm"]                                   # просвет между карточками
 CARD_HEIGHT = THUMB + 2 * SPACE["sm"] + CARD_GAP
 TAG_ALPHA = 36                                           # прозрачность фона метки (цвет — тот же, что у подписи)
+FOLLOW_MS = 200                                          # плавная прокрутка к фото, которое сейчас в работе
 
 
 def draw_tag(painter, pill, tag, color, font) -> None:
@@ -92,6 +93,7 @@ class PhotoCardDelegate(QStyledItemDelegate):
 
 class PhotoList(QListView):
     """Список фото (модель — `PhotoListModel`); принимает перетащенные файлы и папки."""
+    user_action = pyqtSignal()       # пользователь сам щёлкнул, нажал клавишу или прокрутил список
 
     def __init__(self, on_files, parent=None):
         super().__init__(parent)
@@ -105,6 +107,48 @@ class PhotoList(QListView):
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setMinimumWidth(260)
+        bar = self.verticalScrollBar()
+        self._scroll = QPropertyAnimation(bar, b"value", self)
+        self._scroll.setDuration(FOLLOW_MS)
+        self._scroll.setEasingCurve(QEasingCurve.OutCubic)
+        bar.actionTriggered.connect(lambda _a: self._by_user())      # стрелки, щелчок и перетаскивание ползунка
+        bar.sliderPressed.connect(self._by_user)
+
+    def follow_row(self, row: int) -> None:
+        """Строка становится текущей (и единственной выделенной), список плавно прокручивается, чтобы она была посередине."""
+        idx = self.model().index(row, 0)
+        if not idx.isValid():
+            return
+        bar = self.verticalScrollBar()
+        self._scroll.stop()
+        start = bar.value()
+        self.selectionModel().setCurrentIndex(idx, QItemSelectionModel.ClearAndSelect)   # вид при этом прыгает сам
+        target = bar.value() + self.visualRect(idx).center().y() - self.viewport().height() // 2
+        target = max(bar.minimum(), min(bar.maximum(), target))
+        bar.setValue(start)                              # прыжок отменён до отрисовки — дальше едем плавно
+        if target != start:
+            self._scroll.setStartValue(start)
+            self._scroll.setEndValue(target)
+            self._scroll.start()
+
+    def scrolling(self) -> bool:
+        return self._scroll.state() == QPropertyAnimation.Running
+
+    def _by_user(self):
+        self._scroll.stop()                              # прокрутка не спорит с рукой пользователя
+        self.user_action.emit()
+
+    def mousePressEvent(self, e):
+        self._by_user()
+        super().mousePressEvent(e)
+
+    def keyPressEvent(self, e):
+        self._by_user()
+        super().keyPressEvent(e)
+
+    def wheelEvent(self, e):
+        self._by_user()
+        super().wheelEvent(e)
 
     def count(self) -> int:
         return self.model().rowCount() if self.model() else 0

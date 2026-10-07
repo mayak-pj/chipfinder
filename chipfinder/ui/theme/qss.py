@@ -30,6 +30,7 @@ QPushButton { background: $surface; border: 1px solid $border; border-radius: ${
               padding: 0 ${space_md}px; min-height: ${button_inner}px; }
 QPushButton:hover { background: $surface_alt; border-color: $border_strong; }
 QPushButton:pressed { background: $accent_soft; }
+QPushButton:checked { background: $accent_soft; border-color: $accent; }
 QPushButton:default, QPushButton[accent="true"] { background: $accent; border-color: $accent; color: $on_accent; }
 QPushButton:default:hover, QPushButton[accent="true"]:hover { background: $accent_hover; border-color: $accent_hover; }
 QPushButton:default:pressed, QPushButton[accent="true"]:pressed { background: $accent_pressed; }

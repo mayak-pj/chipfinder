@@ -108,6 +108,9 @@ class SettingsDialog(QDialog):
         self.auto_dl.setChecked(bool(pipe.get("auto_download", True)))
         form.addRow("Поиск:", self.auto_web)
         form.addRow("", self.auto_dl)
+        self.follow = QCheckBox("Следить за распознаванием: список и карточка идут за проверяемым фото")
+        self.follow.setChecked(bool(cfg.get("ui", {}).get("follow_recognition", True)))
+        form.addRow("Окно:", self.follow)
 
         adv = QHBoxLayout()
         for title, rel in (("Открыть sources.json (источники поиска)", "data/sources.json"),
@@ -153,6 +156,7 @@ class SettingsDialog(QDialog):
             "network": {"offline": self.offline.isChecked(), "proxy": self.proxy.text().strip(),
                         "max_pdf_mb": self.maxpdf.value()},
             "pipeline": {"auto_web_search": self.auto_web.isChecked(), "auto_download": self.auto_dl.isChecked()},
+            "ui": {"follow_recognition": self.follow.isChecked()},
         }
         if self.ocr_mode.count():
             user["recognition"] = {"mode": self.ocr_mode.currentData()}
