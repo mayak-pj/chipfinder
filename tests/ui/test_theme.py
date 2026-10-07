@@ -152,7 +152,10 @@ def test_screenshots_tool(tmp_path):
     pytest.importorskip("PyQt5")
     out = tmp_path / u"снимки"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    p = subprocess.run([sys.executable, os.path.join(APP, "tools", "screenshots.py"), "--out", str(out),
+    tool = os.path.join(APP, "tools", "screenshots.py")
+    if not os.path.isfile(tool):                                 # в сборке для Win7 он лежит в checks/
+        tool = os.path.join(APP, "checks", "screenshots.py")
+    p = subprocess.run([sys.executable, tool, "--out", str(out),
                         "--prefix", "t", "--themes", "light,dark", "--no-ocr"], env=env,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
     assert p.returncode == 0, p.stdout.decode("utf-8", "replace")
