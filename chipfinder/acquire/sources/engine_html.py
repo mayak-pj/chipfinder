@@ -18,6 +18,7 @@ import time
 from typing import Any, Callable, Dict, List, Tuple
 from urllib.parse import parse_qs, quote_plus, unquote, urlsplit
 
+from ...core.netsafe import HttpStatus
 from ..models import Lead
 from ..query import mentions, relevance_keys
 from ..registry import register
@@ -326,7 +327,7 @@ class EngineHtml(SourceAdapter):
         except Exception as e:
             detail = str(e) or type(e).__name__
             log.warning("%s: %s", self.id, detail)
-            raise SourceError("engine.error", detail)
+            raise SourceError("engine.error", detail, cause=e)
         try:
             page = fetched["body"].decode("utf-8")
         except UnicodeDecodeError:
@@ -336,7 +337,8 @@ class EngineHtml(SourceAdapter):
             raise SourceError("engine.captcha", "captcha", minutes=REST_MINUTES)
         if fetched["status"] >= 400:
             raise SourceError("engine.quota" if fetched["status"] == 429 else "engine.error",
-                              "HTTP %d" % fetched["status"])
+                              "HTTP %d" % fetched["status"],
+                              cause=HttpStatus(fetched["status"], fetched.get("headers"), fetched["body"]))
         leads = []
         keys = relevance_keys(query)
         dropped = 0

@@ -243,6 +243,7 @@ class BlockTracker:
         self._first_fail: Dict[str, float] = {}
         self._blocked: Dict[str, str] = {}          # домен → причина
         self._last_ok: Dict[str, float] = {}
+        self._reason: Dict[str, str] = {}           # домен → причина последней неудачи (для заключения)
 
     def ok(self, domain: str) -> None:
         """Домен ответил: блокировки нет, счёт неудач сброшен."""
@@ -256,6 +257,7 @@ class BlockTracker:
         if diag is None:
             return ""
         d = domain.lower()
+        self._reason[d] = diag.reason
         if diag.cls != NETWORK_BLOCKED:
             if diag.reason not in _SAYS_NOTHING and diag.cls != NOT_WHITELISTED:
                 self._first_fail.pop(d, None)       # ответил сам сайт — сеть до него открыта
@@ -267,6 +269,10 @@ class BlockTracker:
             self._blocked[d] = self._blocked.get(d) or diag.reason
             return NETWORK_BLOCKED
         return TRANSIENT
+
+    def reason(self, domain: str) -> str:
+        """Код причины последней неудачи домена (`Diagnosis.reason`); не было — пусто."""
+        return self._reason.get(domain.lower(), "")
 
     def is_blocked(self, domain: str) -> bool:
         return domain.lower() in self._blocked

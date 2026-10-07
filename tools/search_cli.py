@@ -160,11 +160,6 @@ def demo(out, pause: float, translate: bool) -> None:
     observer.close()
 
 
-CLASS_RU = {"site_protected": u"сайт защищён от программ — можно скачать вручную",
-            "network_blocked": u"нет доступа из этой сети", "not_whitelisted": u"вне белого списка программы",
-            "transient": u"временный сбой", "unknown": u"причина не ясна"}
-
-
 def live(part: str, maker: str, package: str, everywhere: bool, out, translate: bool) -> int:
     """Полный поиск по настройкам программы; Ctrl+C — отмена поиска, а не обрыв программы."""
     import signal
@@ -191,12 +186,8 @@ def live(part: str, maker: str, package: str, everywhere: bool, out, translate: 
         db.close()
     if res.path:
         out.write(u"файл: %s\n" % res.path)
-    seen = set()
-    for f in res.failures:
-        if f["cls"] != "transient" and (f["site"], f["cls"]) not in seen:
-            seen.add((f["site"], f["cls"]))
-            out.write(u"  %s — %s%s\n" % (f["site"], CLASS_RU.get(f["cls"], f["cls"]),
-                                           u": " + f["url"] if f["url"] else ""))
+    if res.conclusion is not None:            # заключение при неудаче (§4.11)
+        out.write(u"\n" + res.conclusion.text() + u"\n")
     return 0 if res.status in ("confirmed", "probable") else 1
 
 

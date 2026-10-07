@@ -49,6 +49,7 @@ class Registry:
         self._adapters = ADAPTERS if adapters is None else adapters
         self._built: Dict[str, SourceAdapter] = {}      # один экземпляр на источник: общий отдых после капчи
         self.missing: List[str] = []      # id источников, для которых нет класса адаптера
+        self.on_failure: Any = None       # (адаптер, исключение, язык): источник не смог обратиться к сайту (§4.11)
         self._levels = [dict(lv) for lv in self.data.get("levels", [])]
         self._entries = [SourceEntry.from_dict(s) for s in self.data.get("sources", [])]
         ids = [e.id for e in self._entries]

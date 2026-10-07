@@ -7,7 +7,8 @@
 результату пропускает, бюджет — нет. Порядок уровней и источников внутри уровня — по умолчанию из `sources.json`
 или адаптивный, по статистике (`adaptive.py`, §4.10); ранжирование ссылок от него не зависит.
 Ход — только событиями (§4.8). Запросы считаются по событиям шины,
-неудачи доступа (`access.*`, §4.11) собираются в `SearchResult.failures` для заключения.
+неудачи доступа (`access.*` и капча поисковика, §4.11) собираются в `SearchResult.failures`; если документ не
+подтверждён, из них строится заключение (`conclusion.py`): где скачать вручную, что закрыто сетью.
 `search()` исключений не бросает: сбой источника или этапа — событие `error.internal`, поиск идёт дальше.
 """
 from __future__ import annotations
@@ -23,12 +24,13 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Seque
 from ..core.config import resolve_path
 from ..core.netsafe import NetBlocked, SafeHttp, host_of
 from . import confirm as confirm_mod
+from .conclusion import Conclusion, build_conclusion
 from .crawl import crawl
 from .decide import decide
 from .events import Event, EventBus
 from .fetch import fetch_to_quarantine
 from .models import AcquisitionRecord, Lead, PhotoContext
-from .netdiag import BlockTracker, failure_class
+from .netdiag import SITE_PROTECTED, BlockTracker, failure_class
 from .query import DEFAULT_ORDER, Query, base_part, is_smd_code, plan_queries
 from .rank import normalize_url, score_lead
 from .stats import QUERY_KEYS
@@ -59,7 +61,8 @@ class SearchResult:
     path: str = ""                # файл в библиотеке
     best: Optional[AcquisitionRecord] = None
     records: List[AcquisitionRecord] = field(default_factory=list)
-    failures: List[Dict[str, str]] = field(default_factory=list)   # site, cls, url, source, level — для заключения
+    failures: List[Dict[str, str]] = field(default_factory=list)   # site, cls, reason, url, source, level
+    conclusion: Optional[Conclusion] = None   # §4.11: заключение, когда документ не подтверждён (не при отмене)
     queries: int = 0
     downloads: int = 0
     sources: int = 0
@@ -95,6 +98,7 @@ class Orchestrator:
         self.adaptive = adaptive                       # adaptive.py: порядок по статистике; None — по умолчанию
         self.clock = clock
         self.parallel = max(1, int(parallel))
+        registry.on_failure = self._failed             # неудача доступа внутри источника (поисковик)
         self._cancel = threading.Event()
         self._state = threading.Lock()                 # причина остановки: её проверяют потоки источников
         self.sleep = sleep or self._cancel.wait        # пауза между повторами прерывается отменой
@@ -110,6 +114,7 @@ class Orchestrator:
         self._ctx, self._res = ctx, SearchResult(part=ctx.part or ctx.marking)
         self._asked, self._seen, self._url, self._why = set(), set(), "", ""
         self._started = self.clock()
+        self._sites = {en.id: en.domains[0] for en in self.registry.entries(include_disabled=True) if en.domains}
         if self.recorder is not None:
             self.recorder.begin(self._res.part, ctx.manufacturer)
         unsubscribe = self.bus.subscribe(self._watch)
@@ -135,9 +140,13 @@ class Orchestrator:
         elif e.key.startswith("access."):
             site, cls = str(e.params.get("site", "")), e.key.split(".", 1)[1]
             url = str(e.params.get("url") or self._url)
-            self._res.failures.append({"site": site, "cls": cls, "url": url, "source": e.source, "level": e.level})
+            self._res.failures.append({"site": site, "cls": cls, "reason": self.tracker.reason(site), "url": url,
+                                       "source": e.source, "level": e.level})
             if self.access is not None:
                 self.access.record_failure(site, cls, self._res.part, url, e.level)
+        elif e.key == "engine.captcha":           # поисковик с капчей: человек в браузере искать может
+            self._res.failures.append({"site": self._sites.get(e.source, e.source), "cls": SITE_PROTECTED,
+                                       "reason": "captcha", "url": "", "source": e.source, "level": e.level})
 
     def _stop(self) -> bool:
         """Отмена или исчерпан бюджет (событие — один раз)."""
@@ -253,11 +262,7 @@ class Orchestrator:
                 found = adapter.search(query, self.http)
             except Exception as e:       # noqa: BLE001 — сеть и чужая разметка могут бросить что угодно
                 log.info("источник %s: %s", adapter.id, e)
-                site = adapter.domains[0] if adapter.domains else adapter.id
-                cls = failure_class(e, self.tracker, site) if isinstance(e, (NetBlocked, OSError)) else ""
-                if cls:
-                    self._emit("access." + cls, query.lang, adapter.level, adapter.id, site=site)
-                else:
+                if not self._failed(adapter, e, query.lang):
                     self._emit("error.internal", "ru", adapter.level, adapter.id, stage=adapter.id,
                                error=str(e) or type(e).__name__)
                 break
@@ -265,6 +270,14 @@ class Orchestrator:
                 answered.add(query.lang)
                 leads += found
         return leads
+
+    def _failed(self, adapter: Any, exc: BaseException, lang: str) -> bool:
+        """Источник не смог обратиться к сайту: событие `access.*` по классу неудачи. Ложь — это не неудача доступа."""
+        site = adapter.domains[0] if adapter.domains else adapter.id
+        cls = failure_class(exc, self.tracker, site) if isinstance(exc, (NetBlocked, OSError)) else ""
+        if cls:
+            self._emit("access." + cls, lang, adapter.level, adapter.id, site=site)
+        return bool(cls)
 
     # -------------------- документ --------------------
     def _follow(self, lead: Lead) -> bool:
@@ -355,6 +368,9 @@ class Orchestrator:
             source = res.best.lead.source_id
         elif res.reason == "local":
             source = "local"
+        if res.status != "confirmed":
+            res.conclusion = build_conclusion(res.part, res.status, res.failures, self.registry, res.sources,
+                                              len(self.langs), res.seconds)
         self._emit("result." + res.status, source=source, queries=res.queries, seconds=int(round(res.seconds)),
                    sources=res.sources, n=sum(1 for r in res.records if r.verdict.status == "needs_user"))
 
