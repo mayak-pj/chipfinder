@@ -162,8 +162,10 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         save(w, name("feed"))
         w.search_feed.set_running(False)
         from chipfinder.gui.dialogs import AdaptersDialog, DiagnosticsDialog
-        diag = DiagnosticsDialog([{"ok": True, "category": u"Каталог", "name": "alldatasheet", "detail": "200", "url": "https://x.example"},
-                                  {"ok": False, "category": u"Производитель", "name": "ti.com", "detail": "DNS", "url": "https://ti.com"}], w)
+        diag = DiagnosticsDialog([{"ok": True, "category": u"Каталог", "name": "alldatasheet", "detail": "200",
+                                   "url": "https://x.example"},
+                                  {"ok": False, "category": u"Производитель", "name": "ti.com", "detail": "DNS",
+                                   "url": "https://ti.com"}], w)
         ada = AdaptersDialog([{"status": "ok", "level": "catalog", "name": "alldatasheet", "leads": 3, "pdfs": 1, "detail": ""},
                               {"status": "captcha", "level": "web", "name": "bing", "leads": 0, "pdfs": 0, "detail": ""}], w)
         w.tabs.setCurrentIndex(3)                               # «Журнал»

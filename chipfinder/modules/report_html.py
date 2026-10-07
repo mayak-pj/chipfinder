@@ -14,9 +14,9 @@ from ..core.interfaces import Reporter
 from ..core.models import ChipReport, ImageVariant
 from ..core.utils import imread
 
-LIGHT_COLORS = {"link": "#2563eb", "text": "#222", "border": "#ddd", "th": "#f3f3f3", "muted": "#777", "yes_bg": "#fde8e8", "yes_fg": "#8a1c1c",
-                "no_bg": "#e8f5e9", "no_fg": "#1b5e20", "unk_bg": "#eee", "img": "#ccc", "ok": "#1a7f37", "fail": "#c62828",
-                "warn": "#b26a00"}
+LIGHT_COLORS = {"link": "#2563eb", "text": "#222", "border": "#ddd", "th": "#f3f3f3", "muted": "#777",
+                "yes_bg": "#fde8e8", "yes_fg": "#8a1c1c", "no_bg": "#e8f5e9", "no_fg": "#1b5e20", "unk_bg": "#eee",
+                "img": "#ccc", "ok": "#1a7f37", "fail": "#c62828", "warn": "#b26a00"}
 CSS = """<html><head><meta charset="utf-8"><style>
 body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:%(text)s;margin:12px}
 h2{margin:6px 0 10px;font-size:18px} h3{margin:16px 0 6px;font-size:15px;border-bottom:1px solid %(border)s}
@@ -55,18 +55,7 @@ def _img_tag(img, max_w=420) -> str:
     return '<img src="data:image/png;base64,%s">' % base64.b64encode(buf.tobytes()).decode()
 
 
-OCR_LIGHT_COLORS = {"text": "#222", "border": "#ddd", "th": "#f3f3f3", "muted": "#777", "yes_bg": "#fde8e8", "yes_fg": "#8a1c1c",
-                "no_bg": "#e8f5e9", "no_fg": "#1b5e20", "unk_bg": "#eee", "img": "#ccc", "ok": "#1a7f37", "fail": "#c62828",
-                "warn": "#b26a00"}
-CSS = """<html><head><meta charset="utf-8"><style>
-body{font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:%(text)s;margin:12px}
-h2{margin:6px 0 10px;font-size:18px} h3{margin:16px 0 6px;font-size:15px;border-bottom:1px solid %(border)s}
-table{border-collapse:collapse} td,th{border:1px solid %(border)s;padding:4px 7px;vertical-align:top;text-align:left}
-th{background:%(th)s} .big{font-size:16px;font-weight:bold;padding:8px;border-radius:4px}
-.yes{background:%(yes_bg)s;color:%(yes_fg)s} .no{background:%(no_bg)s;color:%(no_fg)s} .unk{background:%(unk_bg)s;color:%(text)s}
-.muted{color:%(muted)s} img{border:1px solid %(img)s;margin:4px} a{color:%(link)s}
-</style></head><body>"""
-STATUS = {"ok": "прочитано", "weak": "низкая уверенность", "unconfirmed": "не подтверждено справочником",
+OCR_STATUS = {"ok": "прочитано", "weak": "низкая уверенность", "unconfirmed": "не подтверждено справочником",
               "empty": "ничего не прочитано", "failed": "ошибка", "unavailable": "недоступен",
               "no_consent": "нет согласия на отправку фото"}
 
@@ -126,8 +115,8 @@ class HtmlReport(Reporter):
     def render(self, r: ChipReport, variants: Optional[List[ImageVariant]] = None,
                colors: Optional[Dict[str, str]] = None) -> str:
         """`colors` — цвета темы окна (имена токенов `ui/theme/tokens.py`); в файл отчёта идёт светлый вариант."""
-        c = dict(LIGHT_COLORS, **(colors or {}))
-        out = [CSS % c]
+        pal = dict(LIGHT_COLORS, **(colors or {}))
+        out = [CSS % pal]
         out.append("<h2>Чип: %s</h2>" % e(r.chosen_part or "не определён"))
         out.append('<div class="muted">Фото: %s</div>' % e(r.image_path))
 
@@ -152,7 +141,7 @@ class HtmlReport(Reporter):
             out.append("<table><tr><th></th><th>Проверка</th><th>Результат</th></tr>")
             for ch in c.checks:
                 sym, col = STATUS.get(ch.status, STATUS["unknown"])
-                col = c.get({"ok": "ok", "fail": "fail", "warn": "warn"}.get(ch.status, "muted"), col)
+                col = pal.get({"ok": "ok", "fail": "fail", "warn": "warn"}.get(ch.status, "muted"), col)
                 out.append("<tr><td style='color:%s;font-weight:bold'>%s</td><td>%s</td><td>%s</td></tr>"
                            % (col, sym, e(ch.name), e(ch.detail)))
             out.append("</table>")
@@ -193,7 +182,7 @@ class HtmlReport(Reporter):
             for h in r.hits[:40]:
                 flag = "" if h.allowed else " <span style='color:%s'>(вне белого списка)</span>"
                 out.append("<tr><td>%s</td><td>%s</td><td>%s%s</td><td>%d%%</td><td style='word-break:break-all'>%s</td></tr>"
-                           % (e(LEVEL_RU.get(h.level, h.level)), e(h.source), e(h.title), flag % c["warn"] if flag else "",
+                           % (e(LEVEL_RU.get(h.level, h.level)), e(h.source), e(h.title), flag % pal["warn"] if flag else "",
                               int(h.score * 100), e(h.location)))
             out.append("</table>")
         out.extend(_conclusion_html(r.conclusion))
