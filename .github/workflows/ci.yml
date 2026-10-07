@@ -17,6 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Windows: offscreen ищет шрифты в PyQt5/Qt5/lib/fonts (там пусто) — текст не рисуется; берём системные
+      - name: Шрифты для offscreen (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "QT_QPA_FONTDIR=C:/Windows/Fonts" >> "$GITHUB_ENV"
+
       # Windows: обычный Python 3.8 (совпадает с целевым 3.8.10)
       - uses: actions/setup-python@v5
         if: runner.os == 'Windows'
