@@ -17,9 +17,12 @@ import sys
 import tempfile
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
+if HERE not in sys.path:            # встроенный Python (python38._pth) папку скрипта в путь не добавляет
+    sys.path.append(HERE)
 
 SAMPLES = ("stm32.png", "at24c02.png", "w25q64_rot.png", "lm358_180.png")
 
