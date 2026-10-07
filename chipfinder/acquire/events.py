@@ -273,6 +273,41 @@ def search_language(query: str = "", source: Any = None, domain: str = "", defau
     return text_language(str(entry.get("name") or "")) or default
 
 
+# ---------- счётчики ----------
+
+class EventCounters:
+    """Счётчики одного поиска: запросов · найдено · скачано · подтверждено (окно и консольный наблюдатель)."""
+    NAMES = ("queries", "found", "fetched", "confirmed")
+
+    def __init__(self):
+        self.counts: Dict[str, int] = dict.fromkeys(self.NAMES, 0)
+
+    def reset(self) -> None:
+        for name in self.NAMES:
+            self.counts[name] = 0
+
+    def add(self, event: Event) -> None:
+        c = self.counts
+        if event.key in ("engine.query", "site.search", "maker.search", "market.search"):
+            c["queries"] += 1
+        elif event.outcome == "found" and event.kind != "local":
+            try:
+                c["found"] += int(event.params.get("n") or 0)
+            except (TypeError, ValueError):
+                pass
+        elif event.key == "fetch.done":
+            c["fetched"] += 1
+        elif event.kind == "result":
+            c["queries"] = event.params.get("queries") or c["queries"]     # оркестратор знает точнее
+            c["confirmed"] += int(event.key == "result.confirmed")
+
+    def text(self) -> str:
+        c = self.counts
+        return u"%d %s · найдено %d · скачано %d · подтверждено %d" % (
+            c["queries"], ru_plural(c["queries"], u"запрос", u"запроса", u"запросов"),
+            c["found"], c["fetched"], c["confirmed"])
+
+
 # ---------- шина ----------
 
 class EventBus:

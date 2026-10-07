@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from chipfinder.acquire.events import Event, EventBus, LANG_LABELS, render, ru_plural  # noqa: E402
+from chipfinder.acquire.events import Event, EventBus, EventCounters, LANG_LABELS, render  # noqa: E402
 
 ICONS = {"": u"⏳", "ok": u"✔", "found": u"✔", "empty": u"·", "fail": u"✘", "skip": u"⤼"}
 
@@ -61,11 +61,12 @@ class ConsoleObserver:
         self.width = width
         self.translate = translate        # под каждой строкой истории — русский перевод
         self.history = []
-        self.counts = {"queries": 0, "found": 0, "fetched": 0, "confirmed": 0}
+        self.counters = EventCounters()
+        self.counts = self.counters.counts
         self._last = 0
 
     def __call__(self, event: Event) -> None:
-        self._count(event)
+        self.counters.add(event)
         if event.final:
             self.history.append(event)
         if not self.tty:
@@ -84,26 +85,8 @@ class ConsoleObserver:
             self.out.write("\n")
             for event in self.history:
                 self._write(self._history_line(event))
-        c = self.counts
-        self._write(u"%d %s · найдено %d · скачано %d · подтверждено %d" % (
-            c["queries"], ru_plural(c["queries"], u"запрос", u"запроса", u"запросов"),
-            c["found"], c["fetched"], c["confirmed"]))
+        self._write(self.counters.text())
         self.history, self._last = [], 0
-
-    def _count(self, event: Event) -> None:
-        c = self.counts
-        if event.key in ("engine.query", "site.search", "maker.search", "market.search"):
-            c["queries"] += 1
-        elif event.outcome == "found" and event.kind != "local":
-            try:
-                c["found"] += int(event.params.get("n") or 0)
-            except (TypeError, ValueError):
-                pass
-        elif event.key == "fetch.done":
-            c["fetched"] += 1
-        elif event.kind == "result":
-            c["queries"] = event.params.get("queries") or c["queries"]     # оркестратор знает точнее
-            c["confirmed"] += int(event.key == "result.confirmed")
 
     def _history_line(self, event: Event) -> str:
         stamp = time.strftime("%H:%M:%S", time.localtime(event.ts))
