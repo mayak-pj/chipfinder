@@ -24,6 +24,7 @@ from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .chip_card import ChipCard
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
+from .docs_model import DocsModel, why_html
 from .feed_model import level_names
 from .models import IMG_EXT, THUMB, HitsModel, PhotoListModel, load_qimage, np_to_qimage, scan_images
 from .photo_list import PhotoList
@@ -44,6 +45,7 @@ class MainWindow(QMainWindow):
         self.items = {}          # path -> {"report", "variants"}
         self.job = None
         self.queue = []
+        self.web_queue = []
         self.ctx = None
         self.pipe = None
         self.ext = None          # ExtensionManager
@@ -171,6 +173,29 @@ class MainWindow(QMainWindow):
         docs = QWidget()
         dl = QVBoxLayout(docs)
         dl.setContentsMargins(8, 8, 8, 8)
+        colors = {k: self.theme.qcolor(k) for k in ("success", "warning", "accent", "danger")}
+        self.docs_model = DocsModel(colors, self)
+        self.docs_table = QTableView()
+        self.docs_table.setModel(self.docs_model)
+        self.docs_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.docs_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.docs_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.docs_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+        self.docs_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.docs_table.selectionModel().currentRowChanged.connect(lambda *_: self._show_why())
+        self.docs_table.doubleClicked.connect(lambda _i: self.tabs.setCurrentWidget(self.why_view))
+        db_ = QHBoxLayout()
+        self.b_accept = QPushButton(self.theme.icon("file-check"), "Подтвердить")
+        self.b_reject = QPushButton(self.theme.icon("x"), "Отклонить")
+        self.b_find_all = QPushButton(self.theme.icon("globe"), "Найти для всех фото")
+        self.b_own_pdf = QPushButton(self.theme.icon("file-text"), "Проверить свой PDF")
+        self.b_accept.clicked.connect(lambda: self.decide_doc(True))
+        self.b_reject.clicked.connect(lambda: self.decide_doc(False))
+        self.b_find_all.clicked.connect(self.find_for_all)
+        self.b_own_pdf.clicked.connect(self.check_own_pdf)
+        for b in (self.b_accept, self.b_reject, self.b_find_all, self.b_own_pdf):
+            db_.addWidget(b)
+        db_.addStretch()
         self.hits_model = HitsModel({"current": self.theme.qcolor("accent_soft"),
                                      "blocked": self.theme.qcolor("text_disabled")}, self)
         self.hits = QTableView()
@@ -180,7 +205,6 @@ class MainWindow(QMainWindow):
         self.hits.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.hits.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.hits.doubleClicked.connect(lambda _i: self.use_hit())
-        dl.addWidget(self.hits)
         hb = QHBoxLayout()
         for text, icon, slot in (("Использовать как datasheet", "file-check", self.use_hit),
                                  ("Скачать и проверить", "download", self.download_hit),
@@ -191,8 +215,31 @@ class MainWindow(QMainWindow):
             bb.clicked.connect(slot)
             hb.addWidget(bb)
         hb.addStretch()
-        dl.addLayout(hb)
+        top = QWidget()                  # найденные и проверенные документы с решением пользователя
+        tl = QVBoxLayout(top)
+        tl.setContentsMargins(0, 0, 0, 0)
+        tl.addWidget(self.docs_table)
+        tl.addLayout(db_)
+        bottom = QWidget()               # все ссылки поиска: скачать и проверить вручную
+        bl_ = QVBoxLayout(bottom)
+        bl_.setContentsMargins(0, 0, 0, 0)
+        bl_.addWidget(QLabel("Ссылки поиска"))
+        bl_.addWidget(self.hits)
+        bl_.addLayout(hb)
+        docs_split = QSplitter(Qt.Vertical)
+        docs_split.setChildrenCollapsible(False)
+        docs_split.addWidget(top)
+        docs_split.addWidget(bottom)
+        docs_split.setStretchFactor(0, 3)        # таблице документов — основное место, ссылкам — остаток
+        docs_split.setStretchFactor(1, 1)
+        docs_split.setSizes([300, 100])
+        self.docs_table.setMinimumHeight(110)
+        self.hits.setMinimumHeight(48)
+        dl.addWidget(docs_split)
         self.tabs.addTab(docs, "Документы")
+        self.why_view = QTextBrowser()
+        self.why_view.setOpenExternalLinks(False)
+        self.tabs.addTab(self.why_view, "Почему")
 
         self.log_view = QPlainTextEdit()
         self.log_view.setReadOnly(True)
@@ -356,6 +403,7 @@ class MainWindow(QMainWindow):
         if self.job and self.job.isRunning():
             self.job.cancel.cancel()
             self.queue = []
+            self.web_queue = []
             self.log("Останавливаю…")
 
     # ------------------------------------------------------------ файлы
@@ -617,6 +665,8 @@ class MainWindow(QMainWindow):
 
         self.part_box.clear()
         self.hits_model.set_hits([])
+        self.docs_model.set_records(r.records if r else [])
+        self._show_why()
         if not r:
             self.marking.setPlainText("")
             self.report_view.setHtml("<p style='color:#777'>Фото ещё не распознано. Нажмите «Распознать».</p>")
@@ -688,6 +738,89 @@ class MainWindow(QMainWindow):
         self.hits_model.set_hits(r.hits, r.datasheet_path)
         self.hits.resizeColumnToContents(0)
         self.hits.resizeColumnToContents(3)
+
+    def _selected_doc(self):
+        d = self.current()
+        rec = self.docs_model.record(self.docs_table.currentIndex().row()) if d and d["report"] else None
+        return (d["report"], rec) if rec is not None else (None, None)
+
+    def _show_why(self):
+        r, rec = self._selected_doc()
+        colors = {k: self.theme.color(k) for k in ("success", "warning", "accent", "danger")}
+        colors["muted"] = self.theme.color("text_muted")
+        self.why_view.setHtml(why_html(rec, colors))
+
+    def _doc_changed(self, r, rec):
+        """Решение или проверка закончены: строка, «Почему», заключение и метка фото обновляются."""
+        self._refresh_current()              # перечитывает таблицу; выбранная строка сбрасывается
+        row = self.docs_model.row_of(rec)
+        if row >= 0 and r is (self.current() or {}).get("report"):
+            self.docs_table.selectRow(row)
+
+    def decide_doc(self, accept):
+        r, rec = self._selected_doc()
+        if rec is None:
+            QMessageBox.information(self, "Выберите документ", "Выберите документ в таблице.")
+            return
+        if not accept and QMessageBox.question(self, "Отклонить документ",
+                                               "Документ будет убран из библиотеки. Отклонить?") != QMessageBox.Yes:
+            return
+
+        def work(progress, cancel):
+            return self.pipe.decide_record(r, rec, accept, progress)
+        self.start_job(work, lambda res: self._doc_changed(r, res))
+
+    def check_own_pdf(self):
+        d = self.current()
+        if not d or not d["report"] or not d["report"].chosen_part:
+            QMessageBox.information(self, "Нет партномера", "Выберите распознанное фото.")
+            return
+        p = QFileDialog.getOpenFileName(self, "Ваш PDF datasheet", "", "PDF (*.pdf)")[0]
+        if not p:
+            return
+        r = d["report"]
+        self._begin_feed()
+
+        def work(progress, cancel):
+            return self.pipe.check_own_pdf(r, p, progress)
+        if self.start_job(work, lambda rec: rec is not None and (self._doc_changed(r, rec), self.tabs.setCurrentWidget(self.why_view))):
+            self._working(self.current_path(), "search")
+
+    def find_for_all(self):
+        """Поиск в интернете для каждого распознанного фото с партномером — по очереди, как «Распознать»."""
+        paths = [p for p, d in self.items.items() if d["report"] and d["report"].chosen_part]
+        if not paths:
+            QMessageBox.information(self, "Нет партномеров", "Сначала распознайте фото.")
+            return
+        self.web_queue = paths
+        self._next_web()
+
+    def _next_web(self):
+        if not self.web_queue:
+            return
+        if self.job and self.job.isRunning():
+            QTimer.singleShot(150, self._next_web)
+            return
+        path = self.web_queue.pop(0)
+        r = self.items[path]["report"]
+
+        def work(progress, cancel):
+            self.pipe.search_web(r, progress=progress, cancel=cancel)
+            return path
+
+        self._begin_feed()
+        if self.start_job(work, self._web_done):
+            self._working(path, "search")
+            self._follow_to(path)
+
+    def _web_done(self, path):
+        self._mark_item(path)
+        if path == self.current_path():
+            self.show_current()
+        if self.web_queue:
+            QTimer.singleShot(150, self._next_web)
+        else:
+            self.log("Поиск для всех фото закончен")
 
     def _selected_hit(self):
         d = self.current()

@@ -113,6 +113,9 @@ class DocsModel(QAbstractTableModel):
     def record(self, row: int) -> Optional[AcquisitionRecord]:
         return self._recs[row] if 0 <= row < len(self._recs) else None
 
+    def row_of(self, rec: AcquisitionRecord) -> int:
+        return self._recs.index(rec) if rec in self._recs else -1
+
     def refresh(self, rec: AcquisitionRecord) -> None:
         """Запись изменилась (решение пользователя): строка перерисовывается на месте."""
         if rec in self._recs:

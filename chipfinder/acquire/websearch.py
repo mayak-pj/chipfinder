@@ -37,6 +37,7 @@ class AcquireWebSearch(WebSearch):
         self.http.add_allowed(self.registry.allowed_domains())
         self._orch: Any = None
         self.last_result: Any = None
+        self.last_records: List[AcquisitionRecord] = []   # записи последнего поиска по всем партномерам
         self._cleanup_quarantine(quarantine, days=int(self.settings.get("quarantine_keep_days", 7)))
 
     @staticmethod
@@ -115,12 +116,14 @@ class AcquireWebSearch(WebSearch):
                         return
             threading.Thread(target=watch, daemon=True).start()
         hits: List[DatasheetHit] = []
+        self.last_records = []
         try:
             for pc in self._contexts(candidates):
                 if cancel is not None and cancel.cancelled:
                     break
                 res = orch.search(pc, everywhere=everywhere)
                 self.last_result = res
+                self.last_records += list(res.records)
                 hits += self._hits(res)
                 if res.conclusion is not None and res.status in ("not_found", "rejected"):
                     say(res.conclusion.text())
@@ -130,6 +133,25 @@ class AcquireWebSearch(WebSearch):
             done.set()
             unsubscribe()
         return sorted(hits, key=lambda h: (-h.score, not h.is_pdf))
+
+    # -------------------- решение пользователя, свой PDF (вызывать из фона) --------------------
+    def accept(self, rec: AcquisitionRecord, others: Any = ()) -> AcquisitionRecord:
+        from . import review
+        orch = self.orchestrator
+        return review.accept(rec, orch.store, others, orch.trust, orch.owners)
+
+    def reject(self, rec: AcquisitionRecord) -> AcquisitionRecord:
+        from . import review
+        return review.reject(rec, self.orchestrator.store)
+
+    def check_pdf(self, path: str, ctx: PhotoContext, others: Any = ()) -> AcquisitionRecord:
+        """PDF, скачанный пользователем: тот же путь проверки, что у найденного программой (`acquire/manual.py`)."""
+        from .manual import check_manual_pdf
+        orch = self.orchestrator
+        quarantine = resolve_path(self.ctx.app_dir, self.ctx.config["paths"]["quarantine_dir"])
+        return check_manual_pdf(path, ctx, orch.store, quarantine, bus=orch.bus, trust=orch.trust,
+                                thresholds=orch.thresholds, weights=orch.weights, others=others,
+                                owners=orch.owners, max_mb=orch.max_mb)
 
     # -------------------- скачивание --------------------
     def download(self, hit: DatasheetHit, progress: Optional[ProgressFn] = None) -> DownloadResult:

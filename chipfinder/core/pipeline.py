@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from .config import load_config, setup_logging
 from .interfaces import CancelToken, Context, ProgressFn
@@ -100,6 +100,7 @@ class ChipPipeline:
             from .models import Candidate
             cands = [Candidate(part=r.chosen_part, score=1.0, reason="введено вручную")]
         hits = self.m["web_search"].search(cands, progress=progress, cancel=cancel, levels=levels)
+        r.records = list(getattr(self.m["web_search"], "last_records", []))
         known = set(h.location for h in r.hits)
         r.hits += [h for h in hits if h.location not in known]
         found = [h for h in hits if h.is_local]       # поиск уже скачал, проверил и положил в библиотеку
@@ -152,6 +153,39 @@ class ChipPipeline:
         return True
 
     # 3. Сверка и память
+    # 3. Решение пользователя по найденному документу и свой PDF (вкладка «Документы»; вызывать из фона)
+    def decide_record(self, r: ChipReport, rec: Any, accept: bool, progress: Optional[ProgressFn] = None) -> Any:
+        ws = self.m["web_search"]
+        if not hasattr(ws, "accept"):
+            self._say(r, progress, "Модуль поиска не поддерживает решения по документам")
+            return rec
+        old = rec.stored_path
+        rec = ws.accept(rec, r.records) if accept else ws.reject(rec)
+        if rec.verdict and rec.verdict.status == "confirmed" and rec.stored_path:
+            r.datasheet_path = rec.stored_path
+        elif old and r.datasheet_path == old and not rec.stored_path:
+            r.datasheet_path = ""
+        self._say(r, progress, "Документ %s вами" % ("подтверждён" if accept else "отклонён"))
+        self.evaluate(r, progress)
+        return rec
+
+    def check_own_pdf(self, r: ChipReport, path: str, progress: Optional[ProgressFn] = None) -> Any:
+        ws = self.m["web_search"]
+        if not hasattr(ws, "check_pdf"):
+            self._say(r, progress, "Модуль поиска не умеет проверять свой PDF")
+            return None
+        from ..acquire.models import PhotoContext
+        cand = next((c for c in r.candidates if c.part == r.chosen_part), None)
+        ctx = PhotoContext(part=r.chosen_part, manufacturer=cand.manufacturer if cand else "",
+                           package=r.chip.package or "", marking=r.ocr.best_text if r.ocr else "")
+        rec = ws.check_pdf(path, ctx, r.records)
+        r.records.append(rec)
+        if rec.verdict and rec.verdict.status == "confirmed" and rec.stored_path:
+            r.datasheet_path = rec.stored_path
+        self._say(r, progress, "Свой PDF проверен: %s" % (rec.verdict.status if rec.verdict else "не прочитан"))
+        self.evaluate(r, progress)
+        return rec
+
     def evaluate(self, r: ChipReport, progress: Optional[ProgressFn] = None) -> None:
         text = ""
         if r.datasheet_path and os.path.exists(r.datasheet_path):

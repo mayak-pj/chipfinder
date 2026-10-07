@@ -86,6 +86,33 @@ def wait_idle(app, w, timeout: float = 30.0) -> None:
     app.processEvents()
 
 
+def demo_documents(w) -> None:
+    """Вкладки «Документы» и «Почему» с тремя примерами записей поиска (выдуманные, не настоящие datasheet)."""
+    from chipfinder.acquire.models import AcquisitionRecord, DocFacts, Evidence, Lead, Verdict
+    from chipfinder.core.models import ChipReport
+    rows = (("confirmed", 92, "ti", "https://www.ti.com/lit/ds/ne555.pdf", [("E1", 30, u"NE555P precision timer", 1),
+                                                                            ("E6", 10, u"Texas Instruments", 1)], []),
+            ("needs_user", 48, "alldatasheet", "https://www.alldatasheet.com/ne555.pdf",
+             [("E1", 30, u"NE555 family", 2), ("E7", -10, u"DIP-8", 1), ("E12", 0, "", 0)], ["package_conflict"]),
+            ("rejected", 12, "bing", "https://example.org/other.pdf", [("E11", -30, u"LM358", 1)],
+             ["no_part_match"]))
+    recs = [AcquisitionRecord(part="NE555P", lead=Lead(url=u, kind="pdf", source_id=src),
+                              facts=DocFacts(pages=12, has_text=True, doc_type="datasheet"),
+                              verdict=Verdict(status=st, score=sc, reasons=rs,
+                                              evidence=[Evidence(code=c, points=p, detail=d, page=pg) for c, p, d, pg in ev]))
+            for st, sc, src, u, ev, rs in rows]
+    r = next((d["report"] for d in w.items.values() if d["report"]), None)
+    if r is None:
+        path = next(iter(w.items), None)
+        if path is None:
+            return
+        r = w.items[path]["report"] = ChipReport(image_path=path, chosen_part="NE555P")
+        w.list.setCurrentRow(0)
+    r.records = recs
+    w.show_current()
+    w.docs_table.selectRow(1)
+
+
 def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
     from chipfinder.gui.dialogs import ExtensionsDialog, SettingsDialog
     from chipfinder.gui.main_window import MainWindow
@@ -107,6 +134,13 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         w.tabs.setCurrentIndex(1)
         app.processEvents()
         save(w, name("documents"))
+        demo_documents(w)
+        w.tabs.setCurrentIndex(1)
+        app.processEvents()
+        save(w, name("documents_filled"))
+        w.tabs.setCurrentIndex(2)
+        app.processEvents()
+        save(w, name("why"))
         w.tabs.setCurrentIndex(0)
         w.search_feed.begin()
         for event in demo_search():

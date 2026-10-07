@@ -143,7 +143,9 @@ class ChipReport:
     comparison: Optional[Comparison] = None
     memory: Optional[MemoryVerdict] = None
     log: List[str] = field(default_factory=list)
+    records: List[Any] = field(default_factory=list)   # записи поиска (`AcquisitionRecord`) для вкладок «Документы» и «Почему»
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
+        d.pop("records", None)       # записи поиска лежат в базе и паспортах, в отчёт не идут
         return d

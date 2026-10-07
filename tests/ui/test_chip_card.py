@@ -119,7 +119,7 @@ def test_window_layout(window):
     from PyQt5.QtCore import Qt
     from chipfinder.gui.chip_card import FIELDS_WIDTH
     w, app = window
-    assert [w.tabs.tabText(i) for i in range(3)] == [u"Заключение", u"Документы", u"Журнал"]
+    assert [w.tabs.tabText(i) for i in range(4)] == [u"Заключение", u"Документы", u"Почему", u"Журнал"]
     assert w.right.orientation() == Qt.Vertical and w.right.widget(0) is w.card
     lower = w.right.widget(1).layout()                       # под карточкой: место ленты поиска (7.5), затем вкладки
     assert lower.indexOf(w.feed_slot) == 0 and lower.indexOf(w.tabs) == 1
