@@ -143,6 +143,7 @@ class ChipReport:
     comparison: Optional[Comparison] = None
     memory: Optional[MemoryVerdict] = None
     log: List[str] = field(default_factory=list)
+    conclusion: Any = None    # `acquire.conclusion.Conclusion` последнего поиска без подтверждённого документа (§4.11)
     records: List[Any] = field(default_factory=list)   # записи поиска (`AcquisitionRecord`) для вкладок «Документы» и «Почему»
 
     def to_dict(self) -> Dict[str, Any]:

@@ -141,7 +141,16 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         w.tabs.setCurrentIndex(2)
         app.processEvents()
         save(w, name("why"))
+        from chipfinder.acquire.conclusion import Conclusion, SiteNote
+        c = Conclusion(part="NE555P", sources=14, languages=3, seconds=52)
+        c.protected = [SiteNote("alldatasheet.com", "captcha", "https://www.alldatasheet.com/view.jsp?Searchword=NE555P", "search")]
+        c.blocked = [SiteNote("ti.com", "dns")]
+        c.not_whitelisted = [SiteNote("files.example.org", "", "https://files.example.org/ne555.pdf", "page")]
+        next(d["report"] for d in w.items.values() if d["report"]).conclusion = c
+        w.show_current()
         w.tabs.setCurrentIndex(0)
+        app.processEvents()
+        save(w, name("conclusion"))
         w.search_feed.begin()
         for event in demo_search():
             w.ctx.bus.publish(event)

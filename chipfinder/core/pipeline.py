@@ -101,6 +101,7 @@ class ChipPipeline:
             cands = [Candidate(part=r.chosen_part, score=1.0, reason="введено вручную")]
         hits = self.m["web_search"].search(cands, progress=progress, cancel=cancel, levels=levels)
         r.records = list(getattr(self.m["web_search"], "last_records", []))
+        r.conclusion = getattr(self.m["web_search"], "last_conclusion", None)
         known = set(h.location for h in r.hits)
         r.hits += [h for h in hits if h.location not in known]
         found = [h for h in hits if h.is_local]       # поиск уже скачал, проверил и положил в библиотеку

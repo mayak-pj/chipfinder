@@ -23,6 +23,7 @@ from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .chip_card import ChipCard
+from .conclusion_panel import ConclusionPanel
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
 from .docs_model import DocsModel, why_html
 from .feed_model import level_names
@@ -168,7 +169,17 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.report_view = QTextBrowser()
         self.report_view.setOpenExternalLinks(False)
-        self.tabs.addTab(self.report_view, "Заключение")
+        self.conclusion_panel = ConclusionPanel(self.theme)
+        self.conclusion_panel.open_browser.connect(lambda n: QDesktopServices.openUrl(QUrl(n.url)))
+        self.conclusion_panel.add_request.connect(self.add_site_to_request)
+        self.conclusion_panel.allow.connect(self.allow_site)
+        concl = QWidget()
+        cl = QVBoxLayout(concl)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+        cl.addWidget(self.conclusion_panel)
+        cl.addWidget(self.report_view, 1)
+        self.tabs.addTab(concl, "Заключение")
 
         docs = QWidget()
         dl = QVBoxLayout(docs)
@@ -666,6 +677,7 @@ class MainWindow(QMainWindow):
         self.part_box.clear()
         self.hits_model.set_hits([])
         self.docs_model.set_records(r.records if r else [])
+        self.conclusion_panel.set_conclusion(r.conclusion if r else None)
         self._show_why()
         if not r:
             self.marking.setPlainText("")
@@ -733,6 +745,20 @@ class MainWindow(QMainWindow):
                 self.img_label.setText("Фото не читается")
             else:
                 self.img_label.setImage(image)
+
+    def add_site_to_request(self, note):
+        from ..acquire.site_actions import add_to_access_request
+        ws, part = self.ctx.modules["web_search"], (self.current() or {}).get("report")
+        part = part.chosen_part if part else ""
+        self._bg(lambda progress, cancel: add_to_access_request(getattr(ws.orchestrator, "access", None), note, part),
+                 lambda ok: self.log("«%s» — в списке для администраторов (Расширение «Сайты без доступа»)" % note.site
+                                     if ok else "«%s» не добавлен" % note.site))
+
+    def allow_site(self, note):
+        from ..acquire.site_actions import allow_domain
+        added = allow_domain(self.ctx.modules["web_search"].http, self.app_dir, note.site)
+        self.log("Домен «%s» разрешён; искать заново — кнопкой «Искать…»" % note.site if added
+                 else "Домен «%s» уже разрешён" % note.site)
 
     def _fill_hits(self, r):
         self.hits_model.set_hits(r.hits, r.datasheet_path)
@@ -1071,7 +1097,7 @@ class MainWindow(QMainWindow):
         with io.open(p, "w", encoding="utf-8-sig", newline="") as f:
             w = csv.writer(f, delimiter=";")
             w.writerow(["Фото", "Маркировка", "Партномер", "Datasheet", "Сверка", "Оценка сверки",
-                        "Память", "Типы памяти", "Итог по памяти"] + [c.title for c in columns])
+                        "Память", "Типы памяти", "Итог по памяти", "Не найдено: где смотреть"] + [c.title for c in columns])
             for path, r in rows:
                 mem = r.memory
                 w.writerow([path, (r.ocr.best_text if r.ocr else "").replace("\n", " / "), r.chosen_part,
@@ -1079,7 +1105,8 @@ class MainWindow(QMainWindow):
                             "%d%%" % (r.comparison.score * 100) if r.comparison else "",
                             {True: "ДА", False: "НЕТ", None: "?"}[mem.has_memory if mem else None],
                             "; ".join("%s %s" % (i.kind, i.size) for i in (mem.items if mem else [])),
-                            mem.summary if mem else ""] + [str(c.target(r)) for c in columns])
+                            mem.summary if mem else "",
+                            r.conclusion.csv_cell() if r.conclusion else ""] + [str(c.target(r)) for c in columns])
         self.log("Сводка сохранена: " + p)
 
     def _open_path(self, p):

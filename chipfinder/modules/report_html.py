@@ -9,6 +9,7 @@ from typing import List, Optional
 
 import cv2
 
+from ..acquire.conclusion import _SECTIONS
 from ..core.interfaces import Reporter
 from ..core.models import ChipReport, ImageVariant
 from ..core.utils import imread
@@ -57,6 +58,29 @@ def _ocr_how(ocr) -> List[str]:
 
 def e(s) -> str:
     return html.escape(str(s or ""))
+
+
+def _conclusion_html(c) -> List[str]:
+    """Раздел «Не найдено / где ещё посмотреть» (§4.11): сайты, причины, ссылки, которые человек откроет в браузере."""
+    if c is None:
+        return []
+    out = ["<h3>Заключение поиска</h3><div>%s</div>" % e(c.text().split("\n")[0])]
+    for name, title in _SECTIONS:
+        notes = getattr(c, name)
+        if not notes:
+            continue
+        out.append("<h4>%s%s</h4><table><tr><th>Сайт</th><th>Причина</th><th>Ссылка</th></tr>"
+                   % ("Где ещё посмотреть — " if c.found else "", e(title)))
+        for n in notes:
+            link = ""
+            if n.url and name != "blocked":                 # закрытый сайт из сети производства не открыть
+                what = "поиск партномера на сайте" if n.link == "search" else "страница или PDF"
+                link = "<a href='%s'>%s</a> <span class='muted'>(%s)</span>" % (e(n.url), e(n.url), what)
+            out.append("<tr><td>%s</td><td>%s</td><td style='word-break:break-all'>%s</td></tr>"
+                       % (e(n.site), e(n.reason_text if name != "not_whitelisted" else ""), link or "—"))
+        out.append("</table>")
+    out.append("<div class='muted' style='margin-top:6px'>%s</div>" % e(c.hint))
+    return out
 
 
 class HtmlReport(Reporter):
@@ -138,6 +162,7 @@ th{background:#f3f3f3} .big{font-size:16px;font-weight:bold;padding:8px;border-r
                            % (e(LEVEL_RU.get(h.level, h.level)), e(h.source), e(h.title), flag,
                               int(h.score * 100), e(h.location)))
             out.append("</table>")
+        out.extend(_conclusion_html(r.conclusion))
         if r.log:
             out.append("<h3>Журнал</h3><pre class='muted' style='white-space:pre-wrap'>%s</pre>"
                        % e("\n".join(r.log[-60:])))

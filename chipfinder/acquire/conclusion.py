@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Tuple
 from urllib.parse import quote, quote_plus
 
 from .events import ru_plural
@@ -73,6 +73,15 @@ class Conclusion:
     def found(self) -> bool:
         """Что-то найдено, но не подтверждено: разделы — «где ещё посмотреть»."""
         return self.status != "not_found"
+
+    def rows(self) -> List[Tuple[str, str, SiteNote]]:
+        """Все строки разделов подряд: (код раздела, заголовок, сайт) — для окна, HTML-отчёта и CSV."""
+        return [(name, title, n) for name, title in _SECTIONS for n in getattr(self, name)]
+
+    def csv_cell(self) -> str:
+        """Одной ячейкой для сводки CSV: «вручную: a.com; нет доступа: b.com; вне списка: c.com»."""
+        short = {"protected": "вручную", "blocked": "нет доступа", "not_whitelisted": "вне списка", "unclear": "не ясно"}
+        return "; ".join("%s: %s" % (short[name], n.site) for name, _t, n in self.rows())
 
     def text(self) -> str:
         lines = ["%s Проверено %d %s на %d %s за %d с." % (

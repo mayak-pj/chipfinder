@@ -37,6 +37,7 @@ class AcquireWebSearch(WebSearch):
         self.http.add_allowed(self.registry.allowed_domains())
         self._orch: Any = None
         self.last_result: Any = None
+        self.last_conclusion: Any = None                  # заключение последнего поиска (None — подтверждено или не было)
         self.last_records: List[AcquisitionRecord] = []   # записи последнего поиска по всем партномерам
         self._cleanup_quarantine(quarantine, days=int(self.settings.get("quarantine_keep_days", 7)))
 
@@ -117,6 +118,7 @@ class AcquireWebSearch(WebSearch):
             threading.Thread(target=watch, daemon=True).start()
         hits: List[DatasheetHit] = []
         self.last_records = []
+        self.last_conclusion = None
         try:
             for pc in self._contexts(candidates):
                 if cancel is not None and cancel.cancelled:
@@ -124,6 +126,7 @@ class AcquireWebSearch(WebSearch):
                 res = orch.search(pc, everywhere=everywhere)
                 self.last_result = res
                 self.last_records += list(res.records)
+                self.last_conclusion = res.conclusion
                 hits += self._hits(res)
                 if res.conclusion is not None and res.status in ("not_found", "rejected"):
                     say(res.conclusion.text())
