@@ -4,7 +4,8 @@
     python tools/screenshots.py [--out my_reports/screens] [--prefix 7_2] [--themes light,dark] [--no-ocr]
 
 Программа запускается во временной папке (настройки по умолчанию, пустая база): рабочие данные не трогаются.
-На каждую тему: главное окно с образцами фото (первое распознано), вкладка «Документы», «Настройки», «Расширения».
+На каждую тему: главное окно с образцами фото (первое распознано), вкладка «Документы», живая лента поиска
+(пример поиска из ARCHITECTURE §4.8, поиск ещё идёт), «Настройки», «Расширения».
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -45,6 +47,25 @@ def sample_photos():
     return [os.path.join(d, n) for n in SAMPLES if os.path.isfile(os.path.join(d, n))]
 
 
+def demo_search():
+    """События примера поиска (`tools/search_cli.py`) с уровнями источников — до подтверждения, оно ещё «идёт»."""
+    from chipfinder.acquire.events import Event
+    from search_cli import DEMO
+    by_kind = {"local": "local", "maker": "maker", "site": "catalog", "market": "russian"}
+    by_lang = {"en": "search", "zh": "china", "ru": "russian"}
+    events, level = [], ""
+    for key, lang, params in DEMO:
+        kind = key.split(".")[0]
+        if kind in by_kind or kind == "engine":
+            level = by_kind.get(kind, by_lang[lang]) if lang == "en" or kind in ("local", "market") else by_lang[lang]
+        if kind in ("confirm", "result"):
+            level = ""
+        events.append(Event(key, dict(params), lang=lang, level=level, source=str(params.get("site") or params.get("engine") or "")))
+        if key == "confirm.search":
+            break
+    return events
+
+
 def save(widget, path: str) -> None:
     from PyQt5.QtCore import QBuffer, QIODevice
     buf = QBuffer()
@@ -56,7 +77,6 @@ def save(widget, path: str) -> None:
 
 
 def wait_idle(app, w, timeout: float = 30.0) -> None:
-    import time
     end = time.time() + timeout
     while time.time() < end:
         app.processEvents()
@@ -88,6 +108,16 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         app.processEvents()
         save(w, name("documents"))
         w.tabs.setCurrentIndex(0)
+        w.search_feed.begin()
+        for event in demo_search():
+            w.ctx.bus.publish(event)
+        wait_idle(app, w)
+        w.search_feed.set_running(True)
+        for _ in range(40):                                     # плавная смена текста строки состояния — до конца
+            app.processEvents()
+            time.sleep(0.01)
+        save(w, name("feed"))
+        w.search_feed.set_running(False)
         for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w))):
             dlg.show()
             app.processEvents()

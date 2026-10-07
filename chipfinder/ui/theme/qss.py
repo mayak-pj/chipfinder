@@ -90,7 +90,8 @@ QSplitter::handle:horizontal { width: ${space_sm}px; }
 QSplitter::handle:vertical { height: ${space_sm}px; }
 QCheckBox, QRadioButton { spacing: ${space_sm}px; }
 
-QFrame#chipCard { background: $surface; border: 1px solid $border; border-radius: ${radius_md}px; }
+QFrame#chipCard, QFrame#searchFeed { background: $surface; border: 1px solid $border; border-radius: ${radius_md}px; }
+QListView#feedHistory { background: transparent; border: none; border-top: 1px solid $border; border-radius: 0; }
 QLabel[muted="true"] { color: $text_muted; }
 QLabel[role="title"] { font-size: ${font_title}px; font-weight: bold; }
 """

@@ -24,8 +24,10 @@ from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .chip_card import ChipCard
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
+from .feed_model import level_names
 from .models import IMG_EXT, THUMB, HitsModel, PhotoListModel, load_qimage, np_to_qimage, scan_images
 from .photo_list import PhotoList
+from .search_feed import SearchFeed
 from .worker import Coalescer, ConsentBridge, Job, TaskPool
 
 PREVIEW = (1280, 960)    # фото для карточки читается не крупнее; под размер окна его вписывает `PhotoView`
@@ -197,16 +199,15 @@ class MainWindow(QMainWindow):
         self.log_view.setMaximumBlockCount(5000)
         self.tabs.addTab(self.log_view, "Журнал")
 
-        # под карточкой — место живой ленты поиска (шаг 7.5; пока пусто и скрыто) и вкладки
+        # под карточкой — живая лента поиска (скрыта, пока нет событий) и вкладки
         lower = QWidget()
         bl = QVBoxLayout(lower)
         bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(gap * 2)
-        self.feed_slot = QWidget()
-        self.feed_slot.setObjectName("searchFeed")
-        QVBoxLayout(self.feed_slot).setContentsMargins(0, 0, 0, 0)
-        self.feed_slot.hide()
-        bl.addWidget(self.feed_slot)
+        self.search_feed = self.feed_slot = SearchFeed(self.theme)
+        self.search_events.connect(self.search_feed.add_events)
+        self.search_feed.stop_requested.connect(self.stop_job)
+        bl.addWidget(self.search_feed)
         bl.addWidget(self.tabs, 1)
         self.right = QSplitter(Qt.Vertical)      # граница «карточка / вкладки» двигается: фото растёт вместе с карточкой
         self.right.setChildrenCollapsible(False)
@@ -250,6 +251,8 @@ class MainWindow(QMainWindow):
             if self._bus_unsubscribe:
                 self._bus_unsubscribe()
             self._bus_unsubscribe = self.ctx.bus.subscribe(self.feed.post)
+            sources = os.path.join(self.app_dir, "data", "sources.json")      # названия уровней для истории поиска
+            self._bg(lambda progress, cancel: level_names(sources), self.search_feed.set_level_names)
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():
                 self.log("⚠ " + getattr(ocr, "error", "OCR недоступен"))
@@ -293,6 +296,7 @@ class MainWindow(QMainWindow):
     def _set_busy(self, busy):
         self.busy.setVisible(busy)
         self.a_stop.setEnabled(busy)
+        self.search_feed.set_running(busy)
         for a in (self.a_run, self.a_web, self.a_web_all):
             a.setEnabled(not busy)
 
@@ -312,9 +316,15 @@ class MainWindow(QMainWindow):
 
     def _job_finished(self, job):
         if self.job is job and not job.isRunning():      # обработчик результата мог запустить следующую
+            self.feed.flush()                            # последние события задачи — в ленту до её закрытия
             self._set_busy(False)
         if job.photo and (self.job is job or self.job.photo != job.photo):
             self._mark_item(job.photo)                   # метка «в работе» снята и после ошибки, и после «Стоп»
+
+    def _begin_feed(self):
+        """Новая задача распознавания или поиска: лента поиска начинается с чистого листа."""
+        self.feed.flush()                                # события прежней задачи — в прежнюю историю
+        self.search_feed.begin()
 
     def _working(self, path, state):
         """Карточка фото показывает, что над ним идёт только что запущенная задача: «распознаю…», «ищу…»."""
@@ -427,6 +437,7 @@ class MainWindow(QMainWindow):
                 self.pipe.search_web(r, progress=progress, cancel=cancel)
             return path, r, variants
 
+        self._begin_feed()
         if self.start_job(work, self._analyzed, path):
             self._working(path, "busy")
             self._follow_to(path)
@@ -518,6 +529,8 @@ class MainWindow(QMainWindow):
         def work(progress, cancel):
             self.pipe.search_web(r, progress=progress, cancel=cancel, levels=levels)
             return r
+        if not (self.job and self.job.isRunning()):
+            self._begin_feed()
         if self.start_job(work, lambda _r: self._refresh_current()):
             self._working(self.current_path(), "search")
 
