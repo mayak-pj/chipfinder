@@ -10,11 +10,10 @@ import sys
 from collections import OrderedDict
 
 from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QPixmap
-from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QDockWidget, QFileDialog, QFormLayout,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
-                             QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
-                             QSplitter, QTableView, QTabWidget, QTextBrowser, QToolBar,
+from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QDockWidget, QFileDialog, QHBoxLayout,
+                             QHeaderView, QLabel, QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar,
+                             QPushButton, QSplitter, QTableView, QTabWidget, QTextBrowser, QToolBar,
                              QVBoxLayout, QWidget)
 
 from ..acquire.events import Event
@@ -23,21 +22,14 @@ from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
+from .chip_card import ChipCard
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
 from .models import IMG_EXT, THUMB, HitsModel, PhotoListModel, load_qimage, np_to_qimage, scan_images
 from .photo_list import PhotoList
 from .worker import Coalescer, ConsentBridge, Job, TaskPool
 
-PACKAGES = ["", "SOP-8", "SOIC-8", "DIP-8", "TSSOP-8", "MSOP-8", "SOT-23-5", "SOT-23-6", "DFN-8", "WSON-8",
-            "SOP-14", "SOP-16", "DIP-14", "DIP-16", "DIP-28", "DIP-40", "SSOP-20", "TSSOP-20", "SSOP-28",
-            "QFN-20", "QFN-24", "QFN-32", "QFN-48", "LQFP-32", "LQFP-48", "LQFP-64", "LQFP-100", "LQFP-144",
-            "TQFP-32", "TQFP-44", "PLCC-32", "PLCC-44", "TSOP-48", "BGA"]
-PREVIEW = (520, 300)
-PREVIEW_CACHE = 32
-
-
-def fit_preview(image) -> QPixmap:
-    return QPixmap.fromImage(image).scaled(PREVIEW[0], PREVIEW[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
+PREVIEW = (1280, 960)    # фото для карточки читается не крупнее; под размер окна его вписывает `PhotoView`
+PREVIEW_CACHE = 16
 
 
 class MainWindow(QMainWindow):
@@ -144,67 +136,16 @@ class MainWindow(QMainWindow):
         ll.addWidget(rm)
         split.addWidget(left)
 
-        # справа
-        right = QWidget()
-        rl = QVBoxLayout(right)
-        rl.setContentsMargins(0, 8, 8, 8)
-        top = QHBoxLayout()
-        imgbox = QGroupBox("Изображение")
-        il = QVBoxLayout(imgbox)
-        self.img_label = QLabel("—")
-        self.img_label.setAlignment(Qt.AlignCenter)
-        self.img_label.setMinimumSize(420, 240)
-        self.img_label.setObjectName("imagePreview")
-        il.addWidget(self.img_label)
-        self.variant_box = QComboBox()
+        # справа — карточка чипа; её поля доступны и под прежними именами окна
+        self.card = ChipCard(self.theme)
+        for name in ("img_label", "variant_box", "marking", "ocr_mode", "rerun", "part_box", "pkg_box", "pins"):
+            setattr(self, name, getattr(self.card, name))
         self.variant_box.currentIndexChanged.connect(self.show_variant)
-        il.addWidget(self.variant_box)
-        top.addWidget(imgbox, 3)
-
-        form_box = QGroupBox("Маркировка и параметры (можно исправить вручную)")
-        fl = QFormLayout(form_box)
-        self.marking = QPlainTextEdit()
-        self.marking.setMaximumHeight(80)
-        self.marking.setPlaceholderText("Текст с корпуса, по строкам")
-        fl.addRow("Маркировка:", self.marking)
-        b = QPushButton("Пересчитать по этому тексту")
-        b.clicked.connect(self.reidentify)
-        fl.addRow("", b)
-        self.ocr_mode = QComboBox()
-        self.ocr_mode.setToolTip("Способ распознавания: «Авто» — по цепочке до уверенного результата; конкретный способ; "
-                                 "«Сравнить все» — все доступные способы, таблица в заключении")
-        self.rerun = QPushButton(ico("refresh-cw"), "Распознать заново")
-        self.rerun.setToolTip("Распознать это фото ещё раз выбранным способом")
+        self.card.b_reidentify.clicked.connect(self.reidentify)
         self.rerun.clicked.connect(self.recognize_again)
-        row = QHBoxLayout()
-        row.addWidget(self.ocr_mode, 1)
-        row.addWidget(self.rerun)
-        fl.addRow("Способ:", row)
-        self.part_box = QComboBox()
-        self.part_box.setEditable(True)
-        self.part_box.setInsertPolicy(QComboBox.NoInsert)
-        pb = QPushButton("Выбрать партномер")
-        pb.clicked.connect(self.choose_part)
-        row = QHBoxLayout()
-        row.addWidget(self.part_box, 1)
-        row.addWidget(pb)
-        fl.addRow("Партномер:", row)
-        self.pkg_box = QComboBox()
-        self.pkg_box.setEditable(True)
-        self.pkg_box.addItems(PACKAGES)
-        self.pins = QSpinBox()
-        self.pins.setRange(0, 2000)
-        self.pins.setSpecialValueText("?")
-        ab = QPushButton("Применить")
-        ab.clicked.connect(self.apply_chip)
-        row2 = QHBoxLayout()
-        row2.addWidget(self.pkg_box, 1)
-        row2.addWidget(QLabel("выводов:"))
-        row2.addWidget(self.pins)
-        row2.addWidget(ab)
-        fl.addRow("Корпус на фото:", row2)
-        top.addWidget(form_box, 4)
-        rl.addLayout(top)
+        self.card.b_part.clicked.connect(self.choose_part)
+        self.card.b_apply.clicked.connect(self.apply_chip)
+        self.photos.dataChanged.connect(self._update_header)
 
         self.tabs = QTabWidget()
         self.report_view = QTextBrowser()
@@ -241,8 +182,31 @@ class MainWindow(QMainWindow):
         self.log_view.setReadOnly(True)
         self.log_view.setMaximumBlockCount(5000)
         self.tabs.addTab(self.log_view, "Журнал")
-        rl.addWidget(self.tabs, 1)
+
+        # под карточкой — место живой ленты поиска (шаг 7.5; пока пусто и скрыто) и вкладки
+        lower = QWidget()
+        bl = QVBoxLayout(lower)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.setSpacing(gap * 2)
+        self.feed_slot = QWidget()
+        self.feed_slot.setObjectName("searchFeed")
+        QVBoxLayout(self.feed_slot).setContentsMargins(0, 0, 0, 0)
+        self.feed_slot.hide()
+        bl.addWidget(self.feed_slot)
+        bl.addWidget(self.tabs, 1)
+        self.right = QSplitter(Qt.Vertical)      # граница «карточка / вкладки» двигается: фото растёт вместе с карточкой
+        self.right.setChildrenCollapsible(False)
+        self.right.addWidget(self.card)
+        self.right.addWidget(lower)
+        self.right.setStretchFactor(0, 2)
+        self.right.setStretchFactor(1, 3)
+        self.right.setSizes([330, 430])
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(0, 8, 8, 8)
+        rl.addWidget(self.right)
         split.addWidget(right)
+        split.setStretchFactor(1, 1)             # прибавка ширины окна — карточке, не списку фото
         split.setSizes([290, 990])
 
         self.status = QLabel("Готово")
@@ -567,6 +531,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------ показ
     def show_current(self, *_):
         d = self.current()
+        self._update_header()
         self.variant_box.blockSignals(True)
         self.variant_box.clear()
         if not d:
@@ -612,6 +577,17 @@ class MainWindow(QMainWindow):
         self.report_view.setHtml(self.pipe.render(r, d["variants"]))
         self._fill_hits(r)
 
+    def _update_header(self, *_):
+        """Заголовок карточки — по состоянию выбранного фото в списке и его отчёту."""
+        path = self.current_path()
+        if not path:
+            self.card.set_header("", "", "new")
+            return
+        state, part = self.photos.status(path)
+        r = self.items.get(path, {}).get("report")
+        self.card.set_header(os.path.basename(path), part, state, r.chip.package if r else "",
+                             r.chip.pins if r else 0, tip=path)
+
     def show_variant(self, idx):
         d = self.current()
         if not d:
@@ -619,13 +595,13 @@ class MainWindow(QMainWindow):
         if idx <= 0:
             self._show_photo(self.current_path())
         elif idx - 1 < len(d["variants"]):
-            self.img_label.setPixmap(fit_preview(np_to_qimage(d["variants"][idx - 1].image)))
+            self.img_label.setImage(np_to_qimage(d["variants"][idx - 1].image))
 
     def _show_photo(self, path):
         """Исходное фото в карточке: из кэша сразу, иначе читается в фоне и показывается, если фото ещё выбрано."""
         if path in self._previews:
             self._previews.move_to_end(path)
-            self.img_label.setPixmap(self._previews[path])
+            self.img_label.setImage(self._previews[path])
             return
         self.img_label.setText("…")
         self._bg(lambda progress, cancel: (path, load_qimage(path, PREVIEW[0], PREVIEW[1])), self._photo_loaded)
@@ -633,14 +609,14 @@ class MainWindow(QMainWindow):
     def _photo_loaded(self, res):
         path, image = res
         if image is not None:
-            self._previews[path] = fit_preview(image)
+            self._previews[path] = image
             while len(self._previews) > PREVIEW_CACHE:
                 self._previews.popitem(last=False)
         if path == self.current_path() and self.variant_box.currentIndex() <= 0:
             if image is None:
                 self.img_label.setText("Фото не читается")
             else:
-                self.img_label.setPixmap(self._previews[path])
+                self.img_label.setImage(image)
 
     def _fill_hits(self, r):
         self.hits_model.set_hits(r.hits, r.datasheet_path)

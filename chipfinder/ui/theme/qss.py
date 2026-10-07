@@ -89,7 +89,7 @@ QSplitter::handle:horizontal { width: ${space_sm}px; }
 QSplitter::handle:vertical { height: ${space_sm}px; }
 QCheckBox, QRadioButton { spacing: ${space_sm}px; }
 
-QLabel#imagePreview { background: $bg; border: 1px solid $border; border-radius: ${radius_sm}px; color: $text_muted; }
+QFrame#chipCard { background: $surface; border: 1px solid $border; border-radius: ${radius_md}px; }
 QLabel[muted="true"] { color: $text_muted; }
 QLabel[role="title"] { font-size: ${font_title}px; font-weight: bold; }
 """

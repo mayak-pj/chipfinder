@@ -62,8 +62,8 @@ def test_photo_status_in_model(qapp):
 
 
 def test_cards_are_painted(qapp, tmp_path):
-    from PyQt5.QtCore import QItemSelectionModel, QRect
-    from PyQt5.QtGui import QImage
+    from PyQt5.QtCore import QItemSelectionModel, QPoint
+    from PyQt5.QtGui import QImage, QPixmap, QRegion
     from chipfinder.gui.models import PhotoListModel
     from chipfinder.gui.photo_list import CARD_HEIGHT, PhotoList
     from chipfinder.ui import theme as ui_theme
@@ -84,7 +84,10 @@ def test_cards_are_painted(qapp, tmp_path):
 
         def card(row):
             rect = lst.visualRect(m.index(row))
-            return lst.viewport().grab(QRect(rect.topLeft(), rect.size())).toImage()
+            pm = QPixmap(rect.size())                        # фон списка прозрачный: просветы между карточками
+            pm.fill(theme.qcolor("bg"))                      # без заливки были бы случайными точками
+            lst.viewport().render(pm, QPoint(), QRegion(rect))
+            return pm.toImage()
         danger, ok = theme.qcolor("danger"), theme.qcolor("success")
         new = card(1)
         assert _near(new, danger) == 0

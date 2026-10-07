@@ -18,6 +18,19 @@ CARD_HEIGHT = THUMB + 2 * SPACE["sm"] + CARD_GAP
 TAG_ALPHA = 36                                           # прозрачность фона метки (цвет — тот же, что у подписи)
 
 
+def draw_tag(painter, pill, tag, color, font) -> None:
+    """Метка состояния: подпись цветом `color` на полупрозрачной плашке того же цвета."""
+    back = QColor(color)
+    back.setAlpha(TAG_ALPHA)
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(back)
+    painter.drawRoundedRect(pill, pill.height() / 2.0, pill.height() / 2.0)
+    painter.setFont(font)
+    painter.setPen(color)
+    painter.drawText(pill, Qt.AlignCenter,
+                     QFontMetrics(font).elidedText(tag, Qt.ElideRight, int(pill.width() - SPACE["sm"])))
+
+
 class PhotoCardDelegate(QStyledItemDelegate):
     """Рисует строку списка карточкой: слева миниатюра, справа партномер (или имя файла), имя файла и метка."""
 
@@ -73,15 +86,7 @@ class PhotoCardDelegate(QStyledItemDelegate):
             color = theme.qcolor(color_key)
             h = fm_small.height() + 4
             w = min(width, fm_small.horizontalAdvance(tag) + 2 * pad)
-            pill = QRectF(left, box.bottom() - h, w, h)
-            back = QColor(color)
-            back.setAlpha(TAG_ALPHA)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(back)
-            painter.drawRoundedRect(pill, h / 2.0, h / 2.0)
-            painter.setFont(small)
-            painter.setPen(color)
-            painter.drawText(pill, Qt.AlignCenter, fm_small.elidedText(tag, Qt.ElideRight, int(w - pad)))
+            draw_tag(painter, QRectF(left, box.bottom() - h, w, h), tag, color, small)
         painter.restore()
 
 
