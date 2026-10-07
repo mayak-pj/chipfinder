@@ -17,6 +17,16 @@ IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 LEVEL_RU = {"local": "База", "catalog": "Каталог", "maker": "Производитель", "china": "Китай",
             "forum": "Форум", "marking": "SMD-код", "github": "GitHub"}
 THUMB = 72
+NAME_ROLE, PART_ROLE, STATE_ROLE = Qt.UserRole + 1, Qt.UserRole + 2, Qt.UserRole + 3
+# состояние фото в списке: подпись метки на карточке и её цвет (имя токена темы)
+PHOTO_STATES = {"new": (u"", "text_muted"),
+                "busy": (u"распознаю…", "accent"),
+                "search": (u"ищу…", "accent"),
+                "memory": (u"память", "danger"),
+                "no_memory": (u"без памяти", "success"),
+                "unknown": (u"память: ?", "text_muted"),
+                "not_found": (u"не найдено", "warning"),
+                "unread": (u"не распознано", "warning")}
 THUMB_CACHE = 4000        # столько миниатюр помним, считая убранные из списка фото
 
 
@@ -70,13 +80,16 @@ def load_qimage(path: str, max_w: int, max_h: int) -> Optional[QImage]:
 # ---------- список фото ----------
 
 class PhotoListModel(QAbstractListModel):
-    """Фото в списке: подпись, цвет метки и миниатюра. Миниатюры приходят позже, пачками, и кэшируются."""
+    """Фото в списке: имя, партномер, состояние (`PHOTO_STATES`) и миниатюра.
+
+    Миниатюры приходят позже, пачками, и кэшируются. `DisplayRole` — то же текстом: «имя\nпартномер — метка».
+    """
 
     def __init__(self, placeholder: Optional[QIcon] = None, parent=None):
         super().__init__(parent)
         self._paths: List[str] = []
         self._rows: Dict[str, int] = {}
-        self._labels: Dict[str, Tuple[str, Any]] = {}
+        self._status: Dict[str, Tuple[str, str]] = {}     # путь → (состояние, партномер)
         self._thumbs: Dict[str, Optional[QIcon]] = {}     # None — фото не читается
         self._placeholder = placeholder or QIcon()
 
@@ -87,12 +100,18 @@ class PhotoListModel(QAbstractListModel):
         if not index.isValid() or not 0 <= index.row() < len(self._paths):
             return None
         path = self._paths[index.row()]
+        state, part = self.status(path)
         if role == Qt.DisplayRole:
-            return self._labels[path][0] if path in self._labels else os.path.basename(path)
+            tail = u" — ".join(x for x in (part, PHOTO_STATES[state][0]) if x)
+            return os.path.basename(path) + (u"\n" + tail if tail else u"")
         if role == Qt.DecorationRole:
             return self._thumbs.get(path) or self._placeholder
-        if role == Qt.ForegroundRole:
-            return QBrush(self._labels[path][1]) if path in self._labels else None
+        if role == NAME_ROLE:
+            return os.path.basename(path)
+        if role == PART_ROLE:
+            return part
+        if role == STATE_ROLE:
+            return state
         if role in (Qt.UserRole, Qt.ToolTipRole):
             return path
         return None
@@ -125,15 +144,22 @@ class PhotoListModel(QAbstractListModel):
     def remove(self, paths: Iterable[str]) -> None:
         for row in sorted({self._rows[p] for p in paths if p in self._rows}, reverse=True):
             self.beginRemoveRows(QModelIndex(), row, row)
-            self._labels.pop(self._paths.pop(row), None)
+            self._status.pop(self._paths.pop(row), None)
             self.endRemoveRows()
         self._rows = {p: i for i, p in enumerate(self._paths)}
 
-    def set_label(self, path: str, text: str, color: Any) -> None:
-        if path in self._rows:
-            self._labels[path] = (text, color)
+    def status(self, path: str) -> Tuple[str, str]:
+        return self._status.get(path, ("new", ""))
+
+    def set_status(self, path: str, state: str, part: Optional[str] = None) -> None:
+        """Состояние фото (ключ `PHOTO_STATES`) и партномер; `part=None` — партномер прежний."""
+        if state not in PHOTO_STATES:
+            raise KeyError(state)
+        new = (state, self.status(path)[1] if part is None else part)
+        if path in self._rows and new != self.status(path):
+            self._status[path] = new
             idx = self.index(self._rows[path])
-            self.dataChanged.emit(idx, idx, [Qt.DisplayRole, Qt.ForegroundRole])
+            self.dataChanged.emit(idx, idx, [Qt.DisplayRole, PART_ROLE, STATE_ROLE])
 
     def without_thumbs(self, paths: Iterable[str]) -> List[str]:
         return [p for p in paths if p not in self._thumbs]

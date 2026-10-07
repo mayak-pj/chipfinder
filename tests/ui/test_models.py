@@ -60,7 +60,7 @@ def test_load_qimage_scales_down_and_survives_bad_files(photo_dir, tmp_path):
 
 def test_photo_model(qapp):
     from PyQt5.QtCore import Qt
-    from PyQt5.QtGui import QColor, QImage
+    from PyQt5.QtGui import QImage
     from chipfinder.gui.models import PhotoListModel
     m = PhotoListModel()
     inserted, changed = [], []
@@ -77,8 +77,8 @@ def test_photo_model(qapp):
     m.set_thumbs([(paths[7], qi), (paths[2], None), ("чужой.png", qi)])
     assert changed == [(2, 7)] and not idx.data(Qt.DecorationRole).isNull()
     assert m.without_thumbs(paths[:8]) == paths[:2] + paths[3:7]            # нечитаемое фото заново не грузим
-    m.set_label(paths[7], u"p7.png\nNE555 — без памяти", QColor("#00aa00"))
-    assert u"NE555" in idx.data(Qt.DisplayRole) and idx.data(Qt.ForegroundRole).color().name() == "#00aa00"
+    m.set_status(paths[7], "no_memory", "NE555")
+    assert idx.data(Qt.DisplayRole) == u"p7.png\nNE555 — без памяти"
     m.remove([paths[0], paths[7]])
     assert m.rowCount() == PHOTOS - 2 and m.row(paths[7]) == -1 and m.row(paths[8]) == 6
     assert m.add([paths[7]]) == [paths[7]] and m.without_thumbs([paths[7]]) == []      # миниатюра осталась в кэше

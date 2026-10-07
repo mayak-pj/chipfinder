@@ -12,7 +12,7 @@ from collections import OrderedDict
 from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QDockWidget, QFileDialog, QFormLayout,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListView,
+                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
                              QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
                              QSplitter, QTableView, QTabWidget, QTextBrowser, QToolBar,
                              QVBoxLayout, QWidget)
@@ -25,6 +25,7 @@ from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
 from .models import IMG_EXT, THUMB, HitsModel, PhotoListModel, load_qimage, np_to_qimage, scan_images
+from .photo_list import PhotoList
 from .worker import Coalescer, ConsentBridge, Job, TaskPool
 
 PACKAGES = ["", "SOP-8", "SOIC-8", "DIP-8", "TSSOP-8", "MSOP-8", "SOT-23-5", "SOT-23-6", "DFN-8", "WSON-8",
@@ -37,53 +38,6 @@ PREVIEW_CACHE = 32
 
 def fit_preview(image) -> QPixmap:
     return QPixmap.fromImage(image).scaled(PREVIEW[0], PREVIEW[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
-
-
-class PhotoList(QListView):
-    """Список фото (модель — `PhotoListModel`); принимает перетащенные файлы и папки."""
-
-    def __init__(self, on_files, parent=None):
-        super().__init__(parent)
-        self.on_files = on_files
-        self.setAcceptDrops(True)
-        self.setIconSize(QSize(THUMB, THUMB))
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setMinimumWidth(260)
-        self.setWordWrap(True)
-
-    def count(self) -> int:
-        return self.model().rowCount() if self.model() else 0
-
-    def currentRow(self) -> int:
-        return self.currentIndex().row()
-
-    def setCurrentRow(self, row: int) -> None:
-        self.setCurrentIndex(self.model().index(row, 0))
-
-    def selected_paths(self):
-        return [i.data(Qt.UserRole) for i in sorted(self.selectionModel().selectedIndexes(), key=lambda i: i.row())]
-
-    def dragEnterEvent(self, e):
-        if e.mimeData().hasUrls():
-            e.acceptProposedAction()
-
-    def dragMoveEvent(self, e):
-        if e.mimeData().hasUrls():
-            e.acceptProposedAction()
-
-    def dropEvent(self, e):
-        paths = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()]
-        self.on_files(paths)
-        e.acceptProposedAction()
-
-    def paintEvent(self, e):
-        super().paintEvent(e)
-        if self.count() == 0:
-            from PyQt5.QtGui import QPainter
-            p = QPainter(self.viewport())
-            p.setPen(ui_theme.current().qcolor("text_muted"))
-            p.drawText(self.viewport().rect(), Qt.AlignCenter | Qt.TextWordWrap,
-                       "Перетащите сюда\nвырезанные фото\nмикросхем\n(файлы или папку)")
 
 
 class MainWindow(QMainWindow):
@@ -178,7 +132,7 @@ class MainWindow(QMainWindow):
         # слева — список фото
         left = QWidget()
         ll = QVBoxLayout(left)
-        ll.setContentsMargins(8, 8, 0, 8)
+        ll.setContentsMargins(8, 4, 0, 8)
         self.photos = PhotoListModel(self.theme.icon("cpu", "text_disabled", THUMB), self)
         self.thumb_feed.flushed.connect(self.photos.set_thumbs)
         self.list = PhotoList(self.add_files)
@@ -369,6 +323,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Подождите", "Уже выполняется задача. Нажмите «Стоп», чтобы прервать.")
             return False
         job = self.job = Job(fn, *args, **kwargs)
+        job.photo = None                 # фото, над которым идёт задача (см. `_working`)
         job.on_progress = self._progress
         job.done.connect(on_done)
         job.failed.connect(self._job_failed)
@@ -380,6 +335,13 @@ class MainWindow(QMainWindow):
     def _job_finished(self, job):
         if self.job is job and not job.isRunning():      # обработчик результата мог запустить следующую
             self._set_busy(False)
+        if job.photo and (self.job is job or self.job.photo != job.photo):
+            self._mark_item(job.photo)                   # метка «в работе» снята и после ошибки, и после «Стоп»
+
+    def _working(self, path, state):
+        """Карточка фото показывает, что над ним идёт только что запущенная задача: «распознаю…», «ищу…»."""
+        self.job.photo = path
+        self.photos.set_status(path, state)
 
     def _job_failed(self, msg):
         self.log("Ошибка: " + msg.splitlines()[0])
@@ -485,7 +447,8 @@ class MainWindow(QMainWindow):
                 self.pipe.search_web(r, progress=progress, cancel=cancel)
             return path, r, variants
 
-        self.start_job(work, self._analyzed, path)
+        if self.start_job(work, self._analyzed, path):
+            self._working(path, "busy")
 
     def recognize_again(self):
         """Текущее фото ещё раз — способом, выбранным в списке."""
@@ -513,13 +476,22 @@ class MainWindow(QMainWindow):
             self.log("Готово")
 
     def _mark_item(self, path):
+        """Метка на карточке фото — по его отчёту."""
         d = self.items.get(path)
-        if d and d["report"]:
-            r = d["report"]
-            mem = r.memory.has_memory if r.memory else None
-            tag = {True: "ПАМЯТЬ", False: "без памяти", None: "?"}[mem]
-            self.photos.set_label(path, "%s\n%s — %s" % (os.path.basename(path), r.chosen_part or "?", tag),
-                                  self.theme.qcolor("danger" if mem else ("success" if mem is False else "text_muted")))
+        if not d:
+            return
+        r = d["report"]
+        if r is None:
+            self.photos.set_status(path, "new", "")
+            return
+        mem = r.memory.has_memory if r.memory else None
+        if mem is not None:
+            state = "memory" if mem else "no_memory"
+        elif not r.chosen_part:
+            state = "unread"
+        else:
+            state = "unknown" if r.datasheet_path else "not_found"
+        self.photos.set_status(path, state, r.chosen_part or "")
 
     def web_search(self, levels):
         d = self.current()
@@ -531,7 +503,8 @@ class MainWindow(QMainWindow):
         def work(progress, cancel):
             self.pipe.search_web(r, progress=progress, cancel=cancel, levels=levels)
             return r
-        self.start_job(work, lambda _r: self._refresh_current())
+        if self.start_job(work, lambda _r: self._refresh_current()):
+            self._working(self.current_path(), "search")
 
     def reidentify(self):
         d = self.current()
@@ -545,7 +518,8 @@ class MainWindow(QMainWindow):
 
             def work(progress, cancel):
                 return path, *self.pipe.analyze_image(path, progress=progress, marking_override=text)
-            self.start_job(work, self._analyzed)
+            if self.start_job(work, self._analyzed):
+                self._working(path, "busy")
             return
         r = d["report"]
 

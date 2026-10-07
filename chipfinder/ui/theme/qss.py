@@ -54,6 +54,7 @@ QListView, QTableView, QTreeView { outline: none; alternate-background-color: $b
 QListView::item { padding: ${space_xs}px; border-radius: ${radius_sm}px; }
 QListView::item:hover, QTableView::item:hover { background: $surface_alt; }
 QListView::item:selected, QTableView::item:selected, QTreeView::item:selected { background: $accent_soft; color: $text; }
+QListView#photoCards { background: transparent; border: none; }
 QHeaderView::section { background: $surface_alt; color: $text_muted; border: none; border-right: 1px solid $border;
                        border-bottom: 1px solid $border; padding: ${space_xs}px ${space_sm}px; }
 QTableCornerButton::section { background: $surface_alt; border: none; }
