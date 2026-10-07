@@ -134,6 +134,7 @@ def check_files():
     for fn in sorted(os.listdir(CHECKS_SRC)):
         if fn.endswith((".py", ".txt")) and not fn.startswith("test_"):
             out.append((os.path.join(CHECKS_SRC, fn), "checks/" + fn))
+    out.append((os.path.join(ROOT, "tools", "live_check.py"), "checks/live_check.py"))     # проверка live
     return out
 
 

@@ -19,8 +19,8 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # остальные проверки — по алфавиту после этих
-ORDER = ["sysinfo", "selftest", "window", "ppocr_check", "program_ocr", "sites", "adapters", "downloads"]
-SKIP_FILES = {"run_checks"}
+ORDER = ["sysinfo", "selftest", "window", "ppocr_check", "program_ocr", "sites", "adapters", "downloads", "live"]
+SKIP_FILES = {"run_checks", "live_check"}
 MAX_LOG = 5 * 1024 * 1024
 TODO_FILE = "ЧТО СДЕЛАТЬ.txt"
 
