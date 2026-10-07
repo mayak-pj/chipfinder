@@ -16,13 +16,14 @@ from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox
                              QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QTextBrowser, QToolBar,
                              QVBoxLayout, QWidget)
 
+from ..acquire.events import Event
 from ..core.config import resolve_path
 from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
-from .worker import ConsentBridge, Job
+from .worker import Coalescer, ConsentBridge, Job, TaskPool
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 PACKAGES = ["", "SOP-8", "SOIC-8", "DIP-8", "TSSOP-8", "MSOP-8", "SOT-23-5", "SOT-23-6", "DFN-8", "WSON-8",
@@ -80,6 +81,7 @@ class DropList(QListWidget):
 
 class MainWindow(QMainWindow):
     ext_failed = pyqtSignal(str)      # расширение отключилось (может прийти из фонового потока)
+    search_events = pyqtSignal(list)  # события шины пачкой, не чаще ~30 раз в секунду (для ленты поиска)
 
     def __init__(self, app_dir: str):
         super().__init__()
@@ -93,6 +95,10 @@ class MainWindow(QMainWindow):
         self.consent = ConsentBridge(self)   # вопрос об отправке фото облачному способу распознавания
         self._ext_widgets = []   # вкладки, панели, пункты меню и кнопки расширений
         self._ext_jobs = []
+        self.pool = TaskPool(parent=self)    # все фоновые задачи окна и расширений
+        self.feed = Coalescer(parent=self)   # ход работы и события шины из фоновых потоков — пачками
+        self.feed.flushed.connect(self._feed_batch)
+        self._bus_unsubscribe = None
         self.ext_failed.connect(self._ext_failed, Qt.QueuedConnection)
         self.setWindowTitle("ChipFinder — поиск datasheet по фото микросхемы")
         self.resize(1280, 820)
@@ -295,6 +301,9 @@ class MainWindow(QMainWindow):
                 ocr.consent.ask = self.consent.ask
             self._fill_ocr_modes(ocr)
             self._load_extensions()
+            if self._bus_unsubscribe:
+                self._bus_unsubscribe()
+            self._bus_unsubscribe = self.ctx.bus.subscribe(self.feed.post)
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():
                 self.log("⚠ " + getattr(ocr, "error", "OCR недоступен"))
@@ -317,8 +326,23 @@ class MainWindow(QMainWindow):
             w.setEnabled(self.ocr_mode.count() > 0)
 
     def log(self, msg):
-        self.log_view.appendPlainText("%s  %s" % (datetime.datetime.now().strftime("%H:%M:%S"), msg))
-        self.status.setText(msg[:200])
+        self.feed.flush()            # строки фона, пришедшие раньше, — в журнал раньше
+        self._show_lines([(datetime.datetime.now().strftime("%H:%M:%S"), msg)])
+
+    def _progress(self, msg):
+        """Ход фоновой задачи; вызывается из её потока."""
+        self.feed.post((datetime.datetime.now().strftime("%H:%M:%S"), str(msg)))
+
+    def _feed_batch(self, items):
+        events = [x for x in items if isinstance(x, Event)]
+        self._show_lines([x for x in items if not isinstance(x, Event)])
+        if events:
+            self.search_events.emit(events)
+
+    def _show_lines(self, lines):
+        if lines:
+            self.log_view.appendPlainText("\n".join("%s  %s" % x for x in lines))
+            self.status.setText(lines[-1][1][:200])
 
     def _set_busy(self, busy):
         self.busy.setVisible(busy)
@@ -330,14 +354,18 @@ class MainWindow(QMainWindow):
         if self.job and self.job.isRunning():
             QMessageBox.information(self, "Подождите", "Уже выполняется задача. Нажмите «Стоп», чтобы прервать.")
             return False
-        self.job = Job(fn, *args, **kwargs)
-        self.job.progress.connect(self.log)
-        self.job.done.connect(on_done)
-        self.job.failed.connect(self._job_failed)
-        self.job.finished.connect(lambda: self._set_busy(False))
+        job = self.job = Job(fn, *args, **kwargs)
+        job.on_progress = self._progress
+        job.done.connect(on_done)
+        job.failed.connect(self._job_failed)
+        job.finished.connect(lambda: self._job_finished(job))
         self._set_busy(True)
-        self.job.start()
+        self.pool.start(job)
         return True
+
+    def _job_finished(self, job):
+        if self.job is job and not job.isRunning():      # обработчик результата мог запустить следующую
+            self._set_busy(False)
 
     def _job_failed(self, msg):
         self.log("Ошибка: " + msg.splitlines()[0])
@@ -756,7 +784,7 @@ class MainWindow(QMainWindow):
         self._ext_jobs.append(job)
         job.done.connect(finish)
         job.finished.connect(lambda: self._ext_jobs.remove(job))
-        job.start()
+        self.pool.start(job)
 
     def _ext_failed(self, ext_id):
         info = self.ext.get(ext_id) if self.ext else None
@@ -875,6 +903,9 @@ class MainWindow(QMainWindow):
             self.job.wait(3000)
         for job in list(self._ext_jobs):
             job.wait(3000)
+        if self._bus_unsubscribe:
+            self._bus_unsubscribe()
+            self._bus_unsubscribe = None
         if self.ext:
             self.ext.close()
         if self.ctx:
