@@ -371,7 +371,7 @@ class Orchestrator:
         if res.status != "confirmed":
             res.conclusion = build_conclusion(res.part, res.status, res.failures, self.registry, res.sources,
                                               len(self.langs), res.seconds)
-        self._emit("result." + res.status, source=source, queries=res.queries, seconds=int(round(res.seconds)),
+        self._emit("result." + res.status, source=source, part=res.part, queries=res.queries, seconds=int(round(res.seconds)),
                    sources=res.sources, n=sum(1 for r in res.records if r.verdict.status == "needs_user"))
 
 

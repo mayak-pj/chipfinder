@@ -186,6 +186,17 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
                 app.processEvents()
                 time.sleep(0.02)
             save(w, name("blocked_sites"))
+        hist = w.ext.get("search_history").instance if w.ext and w.ext.get("search_history") else None
+        if hist is not None:                                    # вкладка «История поисков» (7.9)
+            for part, st, src in (("NE555P", "confirmed", "local"), ("W25Q64JV", "probable", "winbond.com"),
+                                  ("LM358", "not_found", "")):
+                w.ctx.bus.emit("result." + st, part=part, source=src, seconds=12)
+            hist.view.reload()
+            w.tabs.setCurrentWidget(hist.view)
+            for _ in range(20):
+                app.processEvents()
+                time.sleep(0.02)
+            save(w, name("history"))
         for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w)),
                           ("diagnostics", diag), ("adapters", ada)):
             dlg.show()
