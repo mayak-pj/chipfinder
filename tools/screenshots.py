@@ -197,6 +197,28 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
                 app.processEvents()
                 time.sleep(0.02)
             save(w, name("history"))
+        sst = w.ext.get("search_stats").instance if w.ext and w.ext.get("search_stats") else None
+        if sst is not None:                                     # вкладка «Статистика поиска» (7.10)
+            from chipfinder.acquire.events import EventBus
+            from chipfinder.acquire.stats import SearchStats, StatsRecorder
+            stats = SearchStats(w.ctx.modules["local_db"])
+            sbus = EventBus()
+            rec = StatsRecorder(stats, sbus)
+            for part, res, src, lang in (("W25Q64JV", "confirmed", "ddg", "en"), ("W25Q64JV", "not_found", "baidu", "zh"),
+                                         ("LM358", "confirmed", "ddg", "en")):
+                rec.begin(part)
+                sbus.emit("engine.query", lang=lang, source=src, engine=src, query="q")
+                sbus.emit("engine.found", lang=lang, source=src, engine=src, query="q", n=2)
+                if res == "confirmed":
+                    sbus.emit("fetch.done", lang=lang, source=src, file="a.pdf", size=1)
+                sbus.emit("result." + res, queries=1, seconds=1)
+            sst.stats = lambda: stats
+            sst.view.reload()
+            w.tabs.setCurrentWidget(sst.view)
+            for _ in range(30):
+                app.processEvents()
+                time.sleep(0.02)
+            save(w, name("stats"))
         for part, dlg in (("settings", SettingsDialog(w.ctx, w)), ("extensions", ExtensionsDialog(w.ext, w)),
                           ("diagnostics", diag), ("adapters", ada)):
             dlg.show()
