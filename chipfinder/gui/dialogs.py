@@ -8,7 +8,7 @@ import os
 
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QColor, QDesktopServices
-from PyQt5.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
+from PyQt5.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
                              QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListWidget, QMessageBox,
                              QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget)
 
@@ -53,6 +53,14 @@ class SettingsDialog(QDialog):
         self.tess = QLineEdit(ocr.get("tesseract_cmd", ""))
         self.tess.setPlaceholderText(r"C:\Program Files\Tesseract-OCR\tesseract.exe (пусто = искать автоматически)")
         form.addRow("Tesseract:", _path_row(self.tess, False, self, "tesseract.exe (tesseract.exe)"))
+        self.ocr_mode = QComboBox()
+        manager = ctx.modules.get("ocr")
+        for mode, title in (manager.modes() if hasattr(manager, "modes") else []):
+            self.ocr_mode.addItem(title, mode)
+        self.ocr_mode.setCurrentIndex(max(0, self.ocr_mode.findData(getattr(manager, "mode", ""))))
+        self.ocr_mode.setEnabled(self.ocr_mode.count() > 0)
+        self.ocr_mode.setToolTip("Способ по умолчанию. На карточке фото его можно сменить и распознать заново.")
+        form.addRow("Способ распознавания:", self.ocr_mode)
 
         self.roots = QListWidget()
         self.roots.addItems(cfg["paths"].get("scan_roots", []))
@@ -144,6 +152,8 @@ class SettingsDialog(QDialog):
                         "max_pdf_mb": self.maxpdf.value()},
             "pipeline": {"auto_web_search": self.auto_web.isChecked(), "auto_download": self.auto_dl.isChecked()},
         }
+        if self.ocr_mode.count():
+            user["recognition"] = {"mode": self.ocr_mode.currentData()}
         # scan_roots — список: сохраняем целиком, а не сливаем
         path = os.path.join(self.ctx.app_dir, "config.json")
         if os.path.exists(path):

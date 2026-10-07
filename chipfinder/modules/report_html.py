@@ -28,6 +28,33 @@ def _img_tag(img, max_w=420) -> str:
     return '<img src="data:image/png;base64,%s">' % base64.b64encode(buf.tobytes()).decode()
 
 
+OCR_STATUS = {"ok": "прочитано", "weak": "низкая уверенность", "unconfirmed": "не подтверждено справочником",
+              "empty": "ничего не прочитано", "failed": "ошибка", "unavailable": "недоступен",
+              "no_consent": "нет согласия на отправку фото"}
+
+
+def _ocr_how(ocr) -> List[str]:
+    """Каким способом прочитано; если пробовали несколько способов — таблица попыток."""
+    if not ocr.provider:
+        return []
+    out = ["<div>Способ распознавания: <b>%s</b> <span class='muted'>(уверенность %d%%, %.1f с%s)</span></div>"
+           % (e(ocr.provider_title or ocr.provider), int(round(ocr.confidence)), ocr.seconds,
+              "; режим «Сравнить все»" if ocr.mode == "compare" else "")]
+    if len(ocr.attempts) > 1:
+        out.append("<table><tr><th>Способ</th><th>Итог</th><th>Уверенность</th><th>Время</th><th>Прочитано</th></tr>")
+        for a in ocr.attempts:
+            ran = a.status in ("ok", "weak", "unconfirmed", "empty")
+            name = e(a.title or a.provider)
+            out.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                "<b>%s</b>" % name if a.provider == ocr.provider else name,
+                e(OCR_STATUS.get(a.status, a.status) + (": " + a.detail if a.detail else "")),
+                "%d%%" % int(round(a.confidence)) if ran and a.text else "—",
+                "%.1f с" % a.seconds if ran or a.status == "failed" else "—",
+                e(a.text).replace("\n", " / ") or "—"))
+        out.append("</table>")
+    return out
+
+
 def e(s) -> str:
     return html.escape(str(s or ""))
 
@@ -77,6 +104,7 @@ th{background:#f3f3f3} .big{font-size:16px;font-weight:bold;padding:8px;border-r
         if r.ocr:
             out.append("<div>Маркировка: <b>%s</b> <span class='muted'>(лучший вариант: %s)</span></div>"
                        % (e(r.ocr.best_text).replace("\n", " / "), e(r.ocr.best_variant)))
+            out.extend(_ocr_how(r.ocr))
         chip = r.chip
         out.append("<div>Корпус на фото: %s; выводов: %s%s; соотношение сторон: %s</div>" % (
             e(chip.package or "не указан"), chip.pins or "?", " (оценка)" if chip.pins_estimated else "",

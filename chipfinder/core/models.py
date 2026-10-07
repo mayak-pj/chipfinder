@@ -36,6 +36,7 @@ class OcrAttempt:
     seconds: float = 0.0
     lines: int = 0
     detail: str = ""          # причина для failed / unavailable
+    text: str = ""            # что прочитал этот провайдер
 
 
 @dataclass
@@ -50,6 +51,7 @@ class OcrResult:
     confirmed: bool = False   # партномер из прочитанного подтверждён справочником, каталогом или локальной базой
     total_seconds: float = 0.0  # время всей цепочки
     attempts: List[OcrAttempt] = field(default_factory=list)
+    mode: str = ""            # способ, которым просили распознать: auto | compare | id провайдера
 
 
 @dataclass

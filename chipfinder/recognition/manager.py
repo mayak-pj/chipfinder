@@ -5,6 +5,8 @@
 упал, ничего не прочитал, прочитал с уверенностью ниже порога или (если включено `require_confirmed`)
 ни один кандидат партномера из прочитанного не подтвердился справочником, каталогом или локальной
 базой (`recognition.auto`).
+Способ (`mode`): «Авто» — цепочка; id провайдера — только он (и не из цепочки тоже); «Сравнить все» —
+все доступные провайдеры по очереди, в `OcrResult.attempts` — что прочитал каждый.
 Облачный провайдер вызывается только если облако включено в настройках и пользователь согласился
 отправить фото (`consent.py`). Ход цепочки — события `ocr.*`. О конкретных провайдерах менеджер не знает — встроенные находит в
 `recognition/providers/`, сторонние — в `plugins/ocr_<имя>/` (provider.json + provider.py).
@@ -36,7 +38,8 @@ DEFAULT_CHAIN = ["ppocr", "tesseract"]
 PLUGIN_PREFIX = "ocr_"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 KINDS = ("local", "cloud")
-RAN = ("ok", "weak", "unconfirmed", "empty", "failed")      # исходы, при которых провайдер работал
+AUTO, COMPARE = "auto", "compare"
+MODE_TITLES = {AUTO: "Авто", COMPARE: "Сравнить все"}
 
 
 def _alnum(s: str) -> int:
@@ -132,13 +135,8 @@ class RecognitionManager(OCR):
         self._lock = threading.Lock()
         self._discover(os.path.join(ctx.app_dir, "plugins"))
         for pid in self.chain:
-            info = self.known.get(pid)
-            if info is None:
-                self._broken(pid, "нет такого провайдера (ни встроенного, ни plugins/%s%s)" % (PLUGIN_PREFIX, pid))
-            elif info.error:
-                self._broken(pid, info.error)
-            else:
-                self._create(info, cfg.get("providers", {}).get(pid, {}))
+            self._ensure(pid)
+        self.mode = self._valid_mode(str(cfg.get("mode") or AUTO))     # способ по умолчанию (настройки)
 
     # -------------------- поиск и загрузка --------------------
     def _discover(self, plugins_dir: str) -> None:
@@ -151,6 +149,18 @@ class RecognitionManager(OCR):
             self.known[info.id] = info
             if info.error:
                 self.ctx.log.warning("Провайдер распознавания в %s: %s", info.path, info.error)
+
+    def _ensure(self, pid: str) -> None:
+        """Создаёт провайдера при первом обращении (из цепочки — при запуске, остальные — когда выбраны)."""
+        if pid in self.providers or pid in self.problems:
+            return
+        info = self.known.get(pid)
+        if info is None:
+            self._broken(pid, "нет такого провайдера (ни встроенного, ни plugins/%s%s)" % (PLUGIN_PREFIX, pid))
+        elif info.error:
+            self._broken(pid, info.error)
+        else:
+            self._create(info, self.ctx.config.get("recognition", {}).get("providers", {}).get(pid, {}))
 
     def _create(self, info: ProviderInfo, settings: Dict[str, Any]) -> None:
         try:
@@ -174,6 +184,24 @@ class RecognitionManager(OCR):
         rest = [i for pid, i in sorted(self.known.items()) if pid not in self.chain]
         return [self.known[pid] for pid in self.chain if pid in self.known] + rest
 
+    def modes(self) -> List[Tuple[str, str]]:
+        """Способы для списка в окне: (id, название) — «Авто», провайдеры, «Сравнить все»."""
+        def title(info: ProviderInfo) -> str:
+            # сторонний провайдер вне цепочки не загружается ради подписи — его доступность выяснится при выборе
+            if info.builtin or info.id in self.providers:
+                ok, why = self._available(info.id)
+                if not ok:
+                    return "%s — недоступно: %s" % (info.title or info.id, why)
+            return info.title or info.id
+        return ([(AUTO, MODE_TITLES[AUTO])] + [(i.id, title(i)) for i in self.catalog() if not i.error]
+                + [(COMPARE, MODE_TITLES[COMPARE])])
+
+    def _valid_mode(self, mode: str) -> str:
+        if mode in (AUTO, COMPARE) or (mode in self.known and not self.known[mode].error):
+            return mode
+        self.ctx.log.warning("Способ распознавания «%s» неизвестен — использую «Авто»", mode)
+        return AUTO
+
     # -------------------- доступность --------------------
     def _title(self, pid: str) -> str:
         info = self.known.get(pid)
@@ -184,6 +212,7 @@ class RecognitionManager(OCR):
 
     def _available(self, pid: str) -> Tuple[bool, str]:
         """Можно ли пробовать провайдера (согласие на отправку здесь не спрашивается)."""
+        self._ensure(pid)
         p = self.providers.get(pid)
         if p is None:
             return False, self.problems.get(pid, "нет такого провайдера")
@@ -235,7 +264,13 @@ class RecognitionManager(OCR):
         return "ok" if res.confirmed or not self.require_confirmed else "unconfirmed"
 
     def recognize(self, variants: List[ImageVariant], progress: Optional[ProgressFn] = None,
-                  original=None) -> OcrResult:
+                  original=None, mode: str = "") -> OcrResult:
+        """mode: пусто — способ из настроек; `auto`; id провайдера; `compare`."""
+        mode = self._valid_mode(mode or self.mode)
+        if mode == COMPARE:
+            chain = [i.id for i in self.catalog() if not i.error]
+        else:
+            chain = self.chain if mode == AUTO else [mode]
         if self.ctx.bus is None:
             self.ctx.bus = EventBus()
 
@@ -246,7 +281,8 @@ class RecognitionManager(OCR):
 
         attempts: List[OcrAttempt] = []
         done: List[OcrResult] = []      # результаты отработавших провайдеров, по порядку цепочки
-        for pid in self.chain:
+        good: List[OcrResult] = []      # из них справившиеся
+        for pid in chain:
             attempt = OcrAttempt(pid, self._title(pid))
             attempts.append(attempt)
             ok, why = self._available(pid)
@@ -276,6 +312,7 @@ class RecognitionManager(OCR):
                 continue
             attempt.seconds = round(time.perf_counter() - t0, 3)
             attempt.lines = len(res.lines)
+            attempt.text = res.best_text
             res.provider, res.provider_title, res.seconds = pid, attempt.title, attempt.seconds
             for line in res.lines:
                 line.provider = pid
@@ -287,16 +324,18 @@ class RecognitionManager(OCR):
             emit("ocr." + attempt.status, pid, conf=int(round(res.confidence)), min=int(self.min_confidence))
             done.append(res)
             if attempt.status == "ok":
-                return self._merge(res, done, attempts)
-        # никто не справился: подтверждённый справочником, иначе первый по цепочке, кто что-то прочитал
+                good.append(res)
+                if mode != COMPARE:
+                    break
+        # справившийся (при сравнении), иначе подтверждённый справочником, иначе первый, кто что-то прочитал
         read = [r for r in done if r.best_text.strip()]
-        best = next((r for r in read if r.confirmed), read[0] if read else (done[-1] if done else OcrResult()))
-        if read:
+        best = (good or [r for r in read if r.confirmed] or read or done[-1:] or [OcrResult()])[0]
+        if read and not good and len(chain) > 1:
             emit("ocr.fallback", best.provider)
-        return self._merge(best, done, attempts)
+        return self._merge(best, done, attempts, mode)
 
     @staticmethod
-    def _merge(result: OcrResult, done: List[OcrResult], attempts: List[OcrAttempt]) -> OcrResult:
+    def _merge(result: OcrResult, done: List[OcrResult], attempts: List[OcrAttempt], mode: str = "") -> OcrResult:
         """К строкам итога добавляются строки остальных отработавших провайдеров (без повторов) —
         как запасные варианты для выбора партномера."""
         seen = {line.text.strip().upper() for line in result.lines}
@@ -309,6 +348,7 @@ class RecognitionManager(OCR):
                     seen.add(key)
                     result.lines.append(line)
         result.attempts = attempts
+        result.mode = mode
         result.total_seconds = round(sum(a.seconds for a in attempts), 3)
         return result
 

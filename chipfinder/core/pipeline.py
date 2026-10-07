@@ -36,7 +36,8 @@ class ChipPipeline:
 
     # 1. Фото → кандидаты → локальная база
     def analyze_image(self, path: str, progress: Optional[ProgressFn] = None,
-                      marking_override: str = "") -> Tuple[ChipReport, List[ImageVariant]]:
+                      marking_override: str = "", ocr_mode: str = "") -> Tuple[ChipReport, List[ImageVariant]]:
+        """ocr_mode — способ распознавания (`auto`, id провайдера, `compare`); пусто — из настроек."""
         r = ChipReport(image_path=path)
         img = imread(path)
         self._say(r, progress, "Улучшаю изображение…")
@@ -50,7 +51,8 @@ class ChipPipeline:
             if not ocr.is_available():
                 self._say(r, progress, "OCR недоступен: %s. Введите маркировку вручную." % getattr(ocr, "error", ""))
                 return r, variants
-            r.ocr = ocr.recognize(variants, progress=lambda s: progress and progress(s), original=img)
+            how = {"mode": ocr_mode} if ocr_mode and hasattr(ocr, "modes") else {}
+            r.ocr = ocr.recognize(variants, progress=lambda s: progress and progress(s), original=img, **how)
             text = r.ocr.best_text
             alts = [l.text for l in r.ocr.lines if l.confidence >= 40]
             how = " (%s)" % r.ocr.provider_title if r.ocr.provider_title else ""

@@ -35,6 +35,7 @@
   },
 
   "recognition": {
+    "mode": "auto",
     "chain": ["ppocr", "tesseract"],
     "auto": {"min_confidence": 60, "require_confirmed": false},
     "cloud_enabled": false,

@@ -189,6 +189,16 @@ class MainWindow(QMainWindow):
         b = QPushButton("Пересчитать по этому тексту")
         b.clicked.connect(self.reidentify)
         fl.addRow("", b)
+        self.ocr_mode = QComboBox()
+        self.ocr_mode.setToolTip("Способ распознавания: «Авто» — по цепочке до уверенного результата; конкретный способ; "
+                                 "«Сравнить все» — все доступные способы, таблица в заключении")
+        self.rerun = QPushButton("Распознать заново")
+        self.rerun.setToolTip("Распознать это фото ещё раз выбранным способом")
+        self.rerun.clicked.connect(self.recognize_again)
+        row = QHBoxLayout()
+        row.addWidget(self.ocr_mode, 1)
+        row.addWidget(self.rerun)
+        fl.addRow("Способ:", row)
         self.part_box = QComboBox()
         self.part_box.setEditable(True)
         self.part_box.setInsertPolicy(QComboBox.NoInsert)
@@ -274,6 +284,7 @@ class MainWindow(QMainWindow):
             ocr = self.ctx.modules.get("ocr")
             if hasattr(ocr, "consent"):
                 ocr.consent.ask = self.consent.ask
+            self._fill_ocr_modes(ocr)
             self._load_extensions()
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():
@@ -286,6 +297,15 @@ class MainWindow(QMainWindow):
                 self.log("Индекс пуст — запустите «База → Индексировать папки»")
         except Exception as e:  # noqa
             QMessageBox.critical(self, "Ошибка запуска модулей", str(e))
+
+    def _fill_ocr_modes(self, ocr):
+        """Список способов распознавания; у модуля OCR без выбора способа список пуст и выключен."""
+        self.ocr_mode.clear()
+        for mode, title in (ocr.modes() if hasattr(ocr, "modes") else []):
+            self.ocr_mode.addItem(title, mode)
+        self.ocr_mode.setCurrentIndex(max(0, self.ocr_mode.findData(getattr(ocr, "mode", ""))))
+        for w in (self.ocr_mode, self.rerun):
+            w.setEnabled(self.ocr_mode.count() > 0)
 
     def log(self, msg):
         self.log_view.appendPlainText("%s  %s" % (datetime.datetime.now().strftime("%H:%M:%S"), msg))
@@ -384,15 +404,28 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(150, self._next_in_queue)
             return
         path = self.queue.pop(0)
+        mode = self.ocr_mode.currentData() or ""
 
         def work(path, progress, cancel):
-            r, variants = self.pipe.analyze_image(path, progress=progress)
+            r, variants = self.pipe.analyze_image(path, progress=progress, ocr_mode=mode)
             if (self.ctx.config["pipeline"].get("auto_web_search") and not r.datasheet_path
                     and r.chosen_part and not cancel.cancelled):
                 self.pipe.search_web(r, progress=progress, cancel=cancel)
             return path, r, variants
 
         self.start_job(work, self._analyzed, path)
+
+    def recognize_again(self):
+        """Текущее фото ещё раз — способом, выбранным в списке."""
+        path = self.current_path()
+        if not path:
+            return
+        if self.job and self.job.isRunning():
+            QMessageBox.information(self, "Подождите", "Уже выполняется задача. Нажмите «Стоп», чтобы прервать.")
+            return
+        self.log("Распознаю заново: %s — %s" % (os.path.basename(path), self.ocr_mode.currentText()))
+        self.queue = [path]
+        self._next_in_queue()
 
     def _analyzed(self, res):
         path, r, variants = res
