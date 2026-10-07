@@ -7,13 +7,14 @@ import datetime
 import io
 import os
 import sys
+from collections import OrderedDict
 
 from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QIcon, QImage, QPixmap
+from PyQt5.QtGui import QDesktopServices, QPixmap
 from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QDockWidget, QFileDialog, QFormLayout,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem,
+                             QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListView,
                              QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
-                             QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QTextBrowser, QToolBar,
+                             QSplitter, QTableView, QTabWidget, QTextBrowser, QToolBar,
                              QVBoxLayout, QWidget)
 
 from ..acquire.events import Event
@@ -23,38 +24,44 @@ from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
 from ..ui import theme as ui_theme
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
+from .models import IMG_EXT, THUMB, HitsModel, PhotoListModel, load_qimage, np_to_qimage, scan_images
 from .worker import Coalescer, ConsentBridge, Job, TaskPool
 
-IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 PACKAGES = ["", "SOP-8", "SOIC-8", "DIP-8", "TSSOP-8", "MSOP-8", "SOT-23-5", "SOT-23-6", "DFN-8", "WSON-8",
             "SOP-14", "SOP-16", "DIP-14", "DIP-16", "DIP-28", "DIP-40", "SSOP-20", "TSSOP-20", "SSOP-28",
             "QFN-20", "QFN-24", "QFN-32", "QFN-48", "LQFP-32", "LQFP-48", "LQFP-64", "LQFP-100", "LQFP-144",
             "TQFP-32", "TQFP-44", "PLCC-32", "PLCC-44", "TSOP-48", "BGA"]
-LEVEL_RU = {"local": "База", "catalog": "Каталог", "maker": "Производитель", "china": "Китай",
-            "forum": "Форум", "marking": "SMD-код", "github": "GitHub"}
+PREVIEW = (520, 300)
+PREVIEW_CACHE = 32
 
 
-def np_to_pixmap(img, max_w=520, max_h=300) -> QPixmap:
-    import cv2
-    if img.ndim == 2:
-        h, w = img.shape
-        qi = QImage(img.data, w, h, img.strides[0], QImage.Format_Grayscale8).copy()
-    else:
-        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        h, w = rgb.shape[:2]
-        qi = QImage(rgb.data, w, h, rgb.strides[0], QImage.Format_RGB888).copy()
-    return QPixmap.fromImage(qi).scaled(max_w, max_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+def fit_preview(image) -> QPixmap:
+    return QPixmap.fromImage(image).scaled(PREVIEW[0], PREVIEW[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
 
-class DropList(QListWidget):
+class PhotoList(QListView):
+    """Список фото (модель — `PhotoListModel`); принимает перетащенные файлы и папки."""
+
     def __init__(self, on_files, parent=None):
         super().__init__(parent)
         self.on_files = on_files
         self.setAcceptDrops(True)
-        self.setIconSize(QSize(72, 72))
+        self.setIconSize(QSize(THUMB, THUMB))
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setMinimumWidth(260)
         self.setWordWrap(True)
+
+    def count(self) -> int:
+        return self.model().rowCount() if self.model() else 0
+
+    def currentRow(self) -> int:
+        return self.currentIndex().row()
+
+    def setCurrentRow(self, row: int) -> None:
+        self.setCurrentIndex(self.model().index(row, 0))
+
+    def selected_paths(self):
+        return [i.data(Qt.UserRole) for i in sorted(self.selectionModel().selectedIndexes(), key=lambda i: i.row())]
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -94,10 +101,12 @@ class MainWindow(QMainWindow):
         self.ext = None          # ExtensionManager
         self.consent = ConsentBridge(self)   # вопрос об отправке фото облачному способу распознавания
         self._ext_widgets = []   # вкладки, панели, пункты меню и кнопки расширений
-        self._ext_jobs = []
+        self._bg_jobs = []       # короткие фоновые задачи: диск, миниатюры, расширения
+        self._previews = OrderedDict()       # путь → готовая картинка для карточки (последние PREVIEW_CACHE)
         self.pool = TaskPool(parent=self)    # все фоновые задачи окна и расширений
         self.feed = Coalescer(parent=self)   # ход работы и события шины из фоновых потоков — пачками
         self.feed.flushed.connect(self._feed_batch)
+        self.thumb_feed = Coalescer(parent=self)      # миниатюры из фона — тоже пачками
         self._bus_unsubscribe = None
         self.ext_failed.connect(self._ext_failed, Qt.QueuedConnection)
         self.setWindowTitle("ChipFinder — поиск datasheet по фото микросхемы")
@@ -170,8 +179,11 @@ class MainWindow(QMainWindow):
         left = QWidget()
         ll = QVBoxLayout(left)
         ll.setContentsMargins(8, 8, 0, 8)
-        self.list = DropList(self.add_files)
-        self.list.currentItemChanged.connect(self.show_current)
+        self.photos = PhotoListModel(self.theme.icon("cpu", "text_disabled", THUMB), self)
+        self.thumb_feed.flushed.connect(self.photos.set_thumbs)
+        self.list = PhotoList(self.add_files)
+        self.list.setModel(self.photos)
+        self.list.selectionModel().currentChanged.connect(self.show_current)
         ll.addWidget(self.list)
         rm = QPushButton(ico("trash-2"), "Убрать из списка")
         rm.clicked.connect(self.remove_selected)
@@ -248,8 +260,10 @@ class MainWindow(QMainWindow):
         docs = QWidget()
         dl = QVBoxLayout(docs)
         dl.setContentsMargins(8, 8, 8, 8)
-        self.hits = QTableWidget(0, 7)
-        self.hits.setHorizontalHeaderLabels(["Где", "Источник", "Название", "Оценка", "PDF", "Адрес", "Примечание"])
+        self.hits_model = HitsModel({"current": self.theme.qcolor("accent_soft"),
+                                     "blocked": self.theme.qcolor("text_disabled")}, self)
+        self.hits = QTableView()
+        self.hits.setModel(self.hits_model)
         self.hits.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.hits.setSelectionMode(QAbstractItemView.SingleSelection)
         self.hits.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -373,6 +387,21 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, "Ошибка", msg[:2000])
         self.queue = []
 
+    def _bg(self, fn, on_done=None):
+        """Короткая фоновая задача вне очереди «Распознать / Искать»: диск, миниатюры, расширения."""
+        job = Job(fn)
+        self._bg_jobs.append(job)
+        if on_done:
+            job.done.connect(on_done)
+        job.failed.connect(lambda msg: self.ctx and self.ctx.log.error(msg))
+        job.finished.connect(lambda: self._bg_jobs.remove(job))
+        self.pool.start(job)
+
+    def is_idle(self) -> bool:
+        """Нет ни идущих задач, ни недоставленных в окно событий."""
+        return not (self.job and self.job.isRunning() or self._bg_jobs
+                    or self.feed.pending() or self.thumb_feed.pending())
+
     def stop_job(self):
         if self.job and self.job.isRunning():
             self.job.cancel.cancel()
@@ -386,38 +415,44 @@ class MainWindow(QMainWindow):
         self.add_files(paths)
 
     def add_files(self, paths):
-        added = 0
-        for p in paths:
-            if os.path.isdir(p):
-                for fn in sorted(os.listdir(p)):
-                    if fn.lower().endswith(IMG_EXT):
-                        added += self._add_one(os.path.join(p, fn))
-            elif p.lower().endswith(IMG_EXT):
-                added += self._add_one(p)
-        if added:
-            self.log("Добавлено фото: %d" % added)
+        """Файлы и папки — в список. Диск (возможно, сетевой) читается в фоне, список пополняется по готовности."""
+        paths = [p for p in paths if p]
+        if paths:
+            self._bg(lambda progress, cancel: scan_images(paths, cancel), self._add_found)
+
+    def _add_found(self, res):
+        found, errors = res
+        for p in errors:
+            self.log("Не найдено или недоступно: %s" % p)
+        new = self.photos.add(found)
+        for p in new:
+            self.items[p] = {"report": None, "variants": []}
+        if new:
+            self.log("Добавлено фото: %d" % len(new))
             if self.list.currentRow() < 0:
                 self.list.setCurrentRow(0)
+            self._load_thumbs(new)
 
-    def _add_one(self, path):
-        path = os.path.normpath(path)
-        if path in self.items:
-            return 0
-        self.items[path] = {"report": None, "variants": []}
-        it = QListWidgetItem(QIcon(QPixmap(path).scaled(72, 72, Qt.KeepAspectRatio)), os.path.basename(path))
-        it.setData(Qt.UserRole, path)
-        it.setToolTip(path)
-        self.list.addItem(it)
-        return 1
+    def _load_thumbs(self, paths):
+        todo = self.photos.without_thumbs(paths)
+
+        def work(progress, cancel):
+            for p in todo:
+                if cancel.cancelled:
+                    break
+                self.thumb_feed.post((p, load_qimage(p, THUMB, THUMB)))
+        if todo:
+            self._bg(work)
 
     def remove_selected(self):
-        for it in self.list.selectedItems():
-            self.items.pop(it.data(Qt.UserRole), None)
-            self.list.takeItem(self.list.row(it))
+        paths = self.list.selected_paths()
+        for p in paths:
+            self.items.pop(p, None)
+        self.photos.remove(paths)
 
     def current_path(self):
-        it = self.list.currentItem()
-        return it.data(Qt.UserRole) if it else None
+        idx = self.list.currentIndex()
+        return idx.data(Qt.UserRole) if idx.isValid() else None
 
     def current(self):
         p = self.current_path()
@@ -426,7 +461,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------ обработка
     def run_selected(self):
         # выделенные (в т.ч. повторно) + все ещё не распознанные
-        sel = [it.data(Qt.UserRole) for it in self.list.selectedItems()]
+        sel = self.list.selected_paths()
         sel += [p for p, d in self.items.items() if d["report"] is None and p not in sel]
         if not sel:
             self.log("Нет новых фото. Выделите фото, чтобы распознать повторно.")
@@ -479,14 +514,12 @@ class MainWindow(QMainWindow):
 
     def _mark_item(self, path):
         d = self.items.get(path)
-        for i in range(self.list.count()):
-            it = self.list.item(i)
-            if it.data(Qt.UserRole) == path and d and d["report"]:
-                r = d["report"]
-                mem = r.memory.has_memory if r.memory else None
-                tag = {True: "ПАМЯТЬ", False: "без памяти", None: "?"}[mem]
-                it.setText("%s\n%s — %s" % (os.path.basename(path), r.chosen_part or "?", tag))
-                it.setForeground(self.theme.qcolor("danger" if mem else ("success" if mem is False else "text_muted")))
+        if d and d["report"]:
+            r = d["report"]
+            mem = r.memory.has_memory if r.memory else None
+            tag = {True: "ПАМЯТЬ", False: "без памяти", None: "?"}[mem]
+            self.photos.set_label(path, "%s\n%s — %s" % (os.path.basename(path), r.chosen_part or "?", tag),
+                                  self.theme.qcolor("danger" if mem else ("success" if mem is False else "text_muted")))
 
     def web_search(self, levels):
         d = self.current()
@@ -564,9 +597,9 @@ class MainWindow(QMainWindow):
         self.variant_box.clear()
         if not d:
             self.variant_box.blockSignals(False)
+            self.img_label.setText("—")
             return
-        path = self.current_path()
-        self.img_label.setPixmap(QPixmap(path).scaled(520, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self._show_photo(self.current_path())
         self.variant_box.addItem("Исходное фото")
         for v in d["variants"]:
             self.variant_box.addItem("Вариант: " + v.name)
@@ -580,7 +613,7 @@ class MainWindow(QMainWindow):
         self.variant_box.blockSignals(False)
 
         self.part_box.clear()
-        self.hits.setRowCount(0)
+        self.hits_model.set_hits([])
         if not r:
             self.marking.setPlainText("")
             self.report_view.setHtml("<p style='color:#777'>Фото ещё не распознано. Нажмите «Распознать».</p>")
@@ -610,33 +643,43 @@ class MainWindow(QMainWindow):
         if not d:
             return
         if idx <= 0:
-            path = self.current_path()
-            self.img_label.setPixmap(QPixmap(path).scaled(520, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self._show_photo(self.current_path())
         elif idx - 1 < len(d["variants"]):
-            self.img_label.setPixmap(np_to_pixmap(d["variants"][idx - 1].image))
+            self.img_label.setPixmap(fit_preview(np_to_qimage(d["variants"][idx - 1].image)))
+
+    def _show_photo(self, path):
+        """Исходное фото в карточке: из кэша сразу, иначе читается в фоне и показывается, если фото ещё выбрано."""
+        if path in self._previews:
+            self._previews.move_to_end(path)
+            self.img_label.setPixmap(self._previews[path])
+            return
+        self.img_label.setText("…")
+        self._bg(lambda progress, cancel: (path, load_qimage(path, PREVIEW[0], PREVIEW[1])), self._photo_loaded)
+
+    def _photo_loaded(self, res):
+        path, image = res
+        if image is not None:
+            self._previews[path] = fit_preview(image)
+            while len(self._previews) > PREVIEW_CACHE:
+                self._previews.popitem(last=False)
+        if path == self.current_path() and self.variant_box.currentIndex() <= 0:
+            if image is None:
+                self.img_label.setText("Фото не читается")
+            else:
+                self.img_label.setPixmap(self._previews[path])
 
     def _fill_hits(self, r):
-        self.hits.setRowCount(len(r.hits))
-        for i, h in enumerate(r.hits):
-            vals = [LEVEL_RU.get(h.level, h.level), h.source, h.title, "%d%%" % (h.score * 100),
-                    "да" if h.is_pdf else "", h.location, h.note if h.allowed or h.is_local else "вне белого списка — только вручную"]
-            for j, v in enumerate(vals):
-                it = QTableWidgetItem(v)
-                if h.location == r.datasheet_path:
-                    it.setBackground(self.theme.qcolor("accent_soft"))
-                if not h.allowed and not h.is_local:
-                    it.setForeground(self.theme.qcolor("text_disabled"))
-                self.hits.setItem(i, j, it)
+        self.hits_model.set_hits(r.hits, r.datasheet_path)
         self.hits.resizeColumnToContents(0)
         self.hits.resizeColumnToContents(3)
 
     def _selected_hit(self):
         d = self.current()
-        row = self.hits.currentRow()
-        if not d or not d["report"] or row < 0 or row >= len(d["report"].hits):
+        h = self.hits_model.hit(self.hits.currentIndex().row()) if d and d["report"] else None
+        if h is None:
             QMessageBox.information(self, "Выберите строку", "Выберите документ в таблице.")
             return None, None
-        return d["report"], d["report"].hits[row]
+        return d["report"], h
 
     def use_hit(self):
         r, h = self._selected_hit()
@@ -739,10 +782,13 @@ class MainWindow(QMainWindow):
         if not p:
             return
         r = d["report"]
-        saved = self.ctx.modules["local_db"].add_to_library(p, r.chosen_part, {"source": "manual", "url": p})
-        r.datasheet_path = saved
-        self.start_job(lambda progress, cancel: (self.pipe.set_part(r, r.chosen_part, progress), r)[1],
-                       lambda _r: self._refresh_current())
+        db = self.ctx.modules["local_db"]
+
+        def work(progress, cancel):       # копирование в библиотеку (сетевой диск) — тоже в фоне
+            r.datasheet_path = db.add_to_library(p, r.chosen_part, {"source": "manual", "url": p})
+            self.pipe.set_part(r, r.chosen_part, progress)
+            return r
+        self.start_job(work, lambda _r: self._refresh_current())
 
     def db_stats(self):
         st = self.ctx.modules["local_db"].stats()
@@ -780,11 +826,7 @@ class MainWindow(QMainWindow):
         self._apply_extensions()
 
     def _ext_run(self, work, finish):
-        job = Job(lambda progress, cancel: work())
-        self._ext_jobs.append(job)
-        job.done.connect(finish)
-        job.finished.connect(lambda: self._ext_jobs.remove(job))
-        self.pool.start(job)
+        self._bg(lambda progress, cancel: work(), finish)
 
     def _ext_failed(self, ext_id):
         info = self.ext.get(ext_id) if self.ext else None
@@ -892,16 +934,20 @@ class MainWindow(QMainWindow):
         self.log("Сводка сохранена: " + p)
 
     def _open_path(self, p):
-        if p and os.path.exists(p):
-            QDesktopServices.openUrl(QUrl.fromLocalFile(p))
-        else:
-            self.log("Не найдено: %s" % p)
+        def opened(found):
+            if found:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(p))
+            else:
+                self.log("Не найдено: %s" % p)
+        self._bg(lambda progress, cancel: bool(p) and os.path.exists(p), opened)   # путь может быть сетевым
 
     def closeEvent(self, e):
         self.stop_job()
         if self.job:
             self.job.wait(3000)
-        for job in list(self._ext_jobs):
+        for job in list(self._bg_jobs):
+            job.cancel.cancel()
+        for job in list(self._bg_jobs):
             job.wait(3000)
         if self._bus_unsubscribe:
             self._bus_unsubscribe()

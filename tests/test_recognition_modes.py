@@ -128,6 +128,11 @@ def test_window_mode_list_and_rerun(window, samples_dir, monkeypatch):
     monkeypatch.setattr(w.pipe, "analyze_image", analyze)
     w.recognize_again()                                     # фото не выбрано — ничего не происходит
     w.add_files([os.path.join(samples_dir, "stm32.png")])
+    for _ in range(1000):                                   # фото добавляются в фоне
+        app.processEvents()
+        if w.is_idle() and w.list.count():
+            break
+        time.sleep(0.01)
     w.ocr_mode.setCurrentIndex(w.ocr_mode.findData("tesseract"))
     w.recognize_again()
     _wait_job(w, app)

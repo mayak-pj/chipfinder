@@ -55,6 +55,17 @@ def save(widget, path: str) -> None:
     print(path)
 
 
+def wait_idle(app, w, timeout: float = 30.0) -> None:
+    import time
+    end = time.time() + timeout
+    while time.time() < end:
+        app.processEvents()
+        if w.is_idle():
+            break
+        time.sleep(0.01)
+    app.processEvents()
+
+
 def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
     from chipfinder.gui.dialogs import ExtensionsDialog, SettingsDialog
     from chipfinder.gui.main_window import MainWindow
@@ -64,12 +75,11 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         w.show()
         photos = sample_photos()
         w.add_files(photos)
-        if photos:
-            w.list.setCurrentRow(0)
+        wait_idle(app, w)                                       # фото и миниатюры читаются в фоне
         if ocr and photos and w.ctx.modules["ocr"].is_available():
             r, variants = w.pipe.analyze_image(photos[0])       # здесь можно в потоке окна: экрана нет
             w._analyzed((photos[0], r, variants))
-        app.processEvents()
+        wait_idle(app, w)
 
         def name(part):
             return os.path.join(out_dir, "%s_%s_%s.png" % (prefix, theme, part))

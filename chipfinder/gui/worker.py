@@ -121,6 +121,10 @@ class Coalescer(QObject):
             except RuntimeError:                  # окно уже закрыто
                 pass
 
+    def pending(self) -> bool:
+        with self._lock:
+            return bool(self._items)
+
     def _arm(self) -> None:
         if not self._timer.isActive():
             self._timer.start()

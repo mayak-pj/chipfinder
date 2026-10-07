@@ -215,5 +215,5 @@ def test_extension_jobs_use_the_window_pool(window):
     got = []
     w._ext_run(lambda: threading.current_thread().name, got.append)
     _pump(app, lambda: got)
-    assert got[0] != threading.main_thread().name and not w._ext_jobs
+    assert got[0] != threading.main_thread().name and not w._bg_jobs
     assert w.pool.wait(1000)
