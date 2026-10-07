@@ -136,6 +136,7 @@ class Context:
         self.app_dir = app_dir
         self.log = logger
         self.modules: Dict[str, Module] = {}
+        self.bus: Any = None      # общая шина событий (acquire/events.py); создаёт загрузчик расширений
 
     def module(self, role: str):
         return self.modules.get(role)

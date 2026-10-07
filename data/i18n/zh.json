@@ -75,5 +75,6 @@
   "result.rejected": "结果：已拒绝 — 找到的文档不符合（{queries} 次查询，{seconds} 秒）",
   "result.not_found": "结果：未找到 — 已检查 {sources} 个来源（{queries} 次查询，{seconds} 秒）",
 
+  "photo.recognized": "照片已识别：{part}",
   "error.internal": "程序在 {stage} 阶段出错：{error}"
 }

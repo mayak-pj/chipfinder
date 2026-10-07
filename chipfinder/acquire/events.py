@@ -54,9 +54,10 @@ KEYS = {
     "result.confirmed": "ok", "result.probable": "ok", "result.needs_user": "ok",
     "result.rejected": "fail", "result.not_found": "empty",
     "error.internal": "fail",
+    "photo.recognized": "ok",       # публикует окно после распознавания фото (для расширений)
 }
 # итог поиска и ошибки программы показываются по-русски, на каком бы языке ни шёл поиск
-ALWAYS_RU = ("result.", "search.", "error.")
+ALWAYS_RU = ("result.", "search.", "error.", "photo.")
 
 _ZH_SOURCES = ("baidu", "bing_cn", "sogou", "so360", "lcsc", "szlcsc", "semiee", "taobao", "1688", "aliexpress")
 _RU_SOURCES = ("yandex", "chipdip", "promelec", "efo", "ozon")

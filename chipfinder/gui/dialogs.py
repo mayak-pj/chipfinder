@@ -6,13 +6,16 @@ import datetime
 import io
 import os
 
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QColor, QDesktopServices
 from PyQt5.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
                              QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListWidget, QMessageBox,
-                             QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
+                             QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget)
 
 from ..core.config import save_user_config
+from ..extensions.loader import STATES as EXTENSION_STATES
+
+EXTENSION_COLORS = {"active": "#1a7f37", "failed": "#c62828", "incompatible": "#c62828"}
 
 
 def _path_row(edit: QLineEdit, folder: bool, parent, filt: str = "") -> QWidget:
@@ -266,3 +269,59 @@ class AdaptersDialog(QDialog):
             for d in blocked:
                 f.write("  %s\n" % d)
         QMessageBox.information(self, "Готово", "Список сохранён:\n%s" % p)
+
+
+class ExtensionsDialog(QDialog):
+    """Окно «Расширения»: что найдено, состояние, включение и выключение; страницы настроек расширений."""
+
+    def __init__(self, manager, parent=None):
+        super().__init__(parent)
+        self.manager = manager
+        self.setWindowTitle("Расширения")
+        self.resize(820, 440)
+        lay = QVBoxLayout(self)
+        self.tabs = QTabWidget()
+        lay.addWidget(self.tabs)
+        page = QWidget()
+        pl = QVBoxLayout(page)
+        pl.addWidget(QLabel("Расширения добавляют вкладки, пункты меню и другие функции. Встроенные лежат в программе, "
+                            "свои — в папке plugins. Расширение с ошибкой отключается само, программа работает дальше."))
+        pl.itemAt(0).widget().setWordWrap(True)
+        rows = manager.extensions
+        self.table = QTableWidget(len(rows), 5)
+        self.table.setHorizontalHeaderLabels(["Включено", "Название", "Версия", "Откуда", "Состояние"])
+        for i, x in enumerate(rows):
+            box = QTableWidgetItem()
+            box.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            box.setCheckState(Qt.Checked if manager.is_enabled(x) else Qt.Unchecked)
+            self.table.setItem(i, 0, box)
+            state = EXTENSION_STATES.get(x.state, x.state) + (": " + x.error if x.error else "")
+            for j, v in enumerate([x.name, x.version, "встроенное" if x.builtin else "plugins", state], 1):
+                it = QTableWidgetItem(v)
+                it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                it.setToolTip(x.description or v)
+                if j == 4:
+                    it.setForeground(QColor(EXTENSION_COLORS.get(x.state, "#6e7781")))
+                self.table.setItem(i, j, it)
+        self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        self.table.verticalHeader().hide()
+        pl.addWidget(self.table)
+        if not rows:
+            pl.addWidget(QLabel("Расширений пока нет."))
+        self.tabs.addTab(page, "Расширения")
+        for c in manager.ui.of("settings_page"):
+            w = c.target()
+            if isinstance(w, QWidget):
+                self.tabs.addTab(w, c.title)
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self._save)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+
+    def _save(self):
+        for i, x in enumerate(self.manager.extensions):
+            on = self.table.item(i, 0).checkState() == Qt.Checked
+            if on != self.manager.is_enabled(x):
+                self.manager.set_enabled(x.id, on)
+        self.accept()

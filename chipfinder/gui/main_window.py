@@ -8,18 +8,19 @@ import io
 import os
 import sys
 
-from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl
+from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QImage, QPixmap
-from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QFileDialog, QFormLayout,
+from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QDockWidget, QFileDialog, QFormLayout,
                              QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem,
-                             QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
+                             QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
                              QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QTextBrowser, QToolBar,
                              QVBoxLayout, QWidget)
 
 from ..core.config import resolve_path
 from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
-from .dialogs import AdaptersDialog, DiagnosticsDialog, SettingsDialog
+from ..extensions.loader import ExtensionManager
+from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
 from .worker import Job
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
@@ -77,6 +78,8 @@ class DropList(QListWidget):
 
 
 class MainWindow(QMainWindow):
+    ext_failed = pyqtSignal(str)      # расширение отключилось (может прийти из фонового потока)
+
     def __init__(self, app_dir: str):
         super().__init__()
         self.app_dir = app_dir
@@ -85,6 +88,10 @@ class MainWindow(QMainWindow):
         self.queue = []
         self.ctx = None
         self.pipe = None
+        self.ext = None          # ExtensionManager
+        self._ext_widgets = []   # вкладки, панели, пункты меню и кнопки расширений
+        self._ext_jobs = []
+        self.ext_failed.connect(self._ext_failed, Qt.QueuedConnection)
         self.setWindowTitle("ChipFinder — поиск datasheet по фото микросхемы")
         self.resize(1280, 820)
         self._build_ui()
@@ -92,7 +99,7 @@ class MainWindow(QMainWindow):
 
     # ------------------------------------------------------------ UI
     def _build_ui(self):
-        tb = QToolBar("Действия")
+        tb = self.toolbar = QToolBar("Действия")
         tb.setMovable(False)
         self.addToolBar(tb)
 
@@ -132,9 +139,13 @@ class MainWindow(QMainWindow):
             os.path.join(resolve_path(self.app_dir, self.ctx.config["paths"]["log_dir"]), "network_audit.log")))
         m.addAction("Папка карантина", lambda: self._open_path(resolve_path(self.app_dir, self.ctx.config["paths"]["quarantine_dir"])))
         mb.addAction("Настройки…", self.settings)
+        m = mb.addMenu("Расширения")
+        m.addAction("Управление расширениями…", self.show_extensions)
+        m.addSeparator()
         m = mb.addMenu("Справка")
         m.addAction("Инструкция (README)", lambda: self._open_path(os.path.join(self.app_dir, "README.md")))
         m.addAction("Модули", self.show_modules)
+        self.menus = {a.text(): a.menu() for a in mb.actions() if a.menu()}
 
         split = QSplitter(Qt.Horizontal)
         self.setCentralWidget(split)
@@ -252,11 +263,14 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------ контекст
     def _load_context(self):
         try:
+            if self.ext:
+                self.ext.close()
             if self.ctx:
                 for mod in self.ctx.modules.values():
                     mod.close()
             self.ctx = create_context(self.app_dir)
             self.pipe = ChipPipeline(self.ctx)
+            self._load_extensions()
             ocr = self.ctx.modules["ocr"]
             if not ocr.is_available():
                 self.log("⚠ " + getattr(ocr, "error", "OCR недоступен"))
@@ -380,6 +394,8 @@ class MainWindow(QMainWindow):
         path, r, variants = res
         self.items[path] = {"report": r, "variants": variants}
         self._mark_item(path)
+        if self.ctx.bus:
+            self.ctx.bus.emit("photo.recognized", lang="ru", part=r.chosen_part or "?", path=path)
         if path == self.current_path():
             self.show_current()
         if self.queue:
@@ -680,6 +696,78 @@ class MainWindow(QMainWindow):
             self._load_context()
             self.log("Настройки сохранены и применены")
 
+    # ------------------------------------------------------------ расширения
+    def _load_extensions(self):
+        if self.ext:
+            self.ext.close()
+        self.ext = ExtensionManager(self.ctx, pipeline=self.pipe, runner=self._ext_run,
+                                    on_failure=lambda info: self.ext_failed.emit(info.id))
+        self.ext.load()
+        self._apply_extensions()
+
+    def _ext_run(self, work, finish):
+        job = Job(lambda progress, cancel: work())
+        self._ext_jobs.append(job)
+        job.done.connect(finish)
+        job.finished.connect(lambda: self._ext_jobs.remove(job))
+        job.start()
+
+    def _ext_failed(self, ext_id):
+        info = self.ext.get(ext_id) if self.ext else None
+        if info:
+            self.log("⚠ Расширение «%s» %s: %s. Программа работает дальше; подробности — в журнале, "
+                     "выключить можно в окне «Расширения»." % (info.name, "не загружено" if not info.instance
+                                                               else "отключено из-за ошибки", info.error))
+            self._apply_extensions()
+
+    def _apply_extensions(self):
+        """Перестраивает вклады расширений в окно: вкладки, боковые панели, пункты меню, кнопки."""
+        for w in self._ext_widgets:
+            if isinstance(w, QAction):
+                for holder in w.associatedWidgets():
+                    holder.removeAction(w)
+            elif isinstance(w, QMenu):
+                self.menuBar().removeAction(w.menuAction())
+                self.menus.pop(w.title(), None)
+            elif isinstance(w, QDockWidget):
+                self.removeDockWidget(w)
+            else:
+                self.tabs.removeTab(self.tabs.indexOf(w))
+            w.deleteLater()
+        self._ext_widgets = []
+        ui = self.ext.ui
+        for c in ui.of("tab") + ui.of("side_panel"):
+            w = c.target()
+            if not isinstance(w, QWidget):
+                continue
+            if c.kind == "tab":
+                self.tabs.addTab(w, c.title)
+            else:
+                dock = QDockWidget(c.title, self)
+                dock.setWidget(w)
+                self.addDockWidget(Qt.RightDockWidgetArea, dock)
+                w = dock
+            self._ext_widgets.append(w)
+        for c in ui.of("menu_item") + ui.of("toolbar_button"):
+            a = QAction(c.title, self)
+            a.triggered.connect(lambda _checked=False, fn=c.target: fn())
+            if c.tip:
+                a.setToolTip(c.tip)
+            holder = self.toolbar
+            if c.kind == "menu_item":
+                name = c.menu or "Расширения"
+                if name not in self.menus:
+                    self.menus[name] = self.menuBar().addMenu(name)
+                    self._ext_widgets.append(self.menus[name])
+                holder = self.menus[name]
+            holder.addAction(a)
+            self._ext_widgets.append(a)
+
+    def show_extensions(self):
+        if self.ext and ExtensionsDialog(self.ext, self).exec_():
+            self._load_extensions()
+            self.log("Расширения: изменения применены")
+
     def show_modules(self):
         lines = ["%-11s %s" % (k, v) for k, v in self.ctx.config["modules"].items()]
         QMessageBox.information(self, "Модули", "Модули программы (меняются в config.json → modules):\n\n" + "\n".join(lines))
@@ -695,8 +783,12 @@ class MainWindow(QMainWindow):
         name = "%s_%s.html" % (safe_filename(r.chosen_part or "chip"), datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         p = QFileDialog.getSaveFileName(self, "Сохранить отчёт", os.path.join(rdir, name), "HTML (*.html)")[0]
         if p:
+            html = self.pipe.render(r, d["variants"])
+            extra = "".join("<h2>%s</h2>\n%s\n" % (c.title, c.target(r)) for c in self.ext.ui.of("report_section"))
+            if extra:
+                html = html.replace("</body>", extra + "</body>") if "</body>" in html else html + extra
             with io.open(p, "w", encoding="utf-8") as f:
-                f.write(self.pipe.render(r, d["variants"]))
+                f.write(html)
             self.log("Отчёт сохранён: " + p)
 
     def save_summary(self):
@@ -710,10 +802,11 @@ class MainWindow(QMainWindow):
                                         "CSV (*.csv)")[0]
         if not p:
             return
+        columns = self.ext.ui.of("csv_column")
         with io.open(p, "w", encoding="utf-8-sig", newline="") as f:
             w = csv.writer(f, delimiter=";")
             w.writerow(["Фото", "Маркировка", "Партномер", "Datasheet", "Сверка", "Оценка сверки",
-                        "Память", "Типы памяти", "Итог по памяти"])
+                        "Память", "Типы памяти", "Итог по памяти"] + [c.title for c in columns])
             for path, r in rows:
                 mem = r.memory
                 w.writerow([path, (r.ocr.best_text if r.ocr else "").replace("\n", " / "), r.chosen_part,
@@ -721,7 +814,7 @@ class MainWindow(QMainWindow):
                             "%d%%" % (r.comparison.score * 100) if r.comparison else "",
                             {True: "ДА", False: "НЕТ", None: "?"}[mem.has_memory if mem else None],
                             "; ".join("%s %s" % (i.kind, i.size) for i in (mem.items if mem else [])),
-                            mem.summary if mem else ""])
+                            mem.summary if mem else ""] + [str(c.target(r)) for c in columns])
         self.log("Сводка сохранена: " + p)
 
     def _open_path(self, p):
@@ -734,6 +827,10 @@ class MainWindow(QMainWindow):
         self.stop_job()
         if self.job:
             self.job.wait(3000)
+        for job in list(self._ext_jobs):
+            job.wait(3000)
+        if self.ext:
+            self.ext.close()
         if self.ctx:
             for mod in self.ctx.modules.values():
                 mod.close()

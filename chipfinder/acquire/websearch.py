@@ -54,7 +54,7 @@ class AcquireWebSearch(WebSearch):
     def orchestrator(self) -> Any:
         if self._orch is None:
             from .orchestrator import from_context
-            self._orch = from_context(self.ctx, http=self.http)
+            self._orch = from_context(self.ctx, bus=getattr(self.ctx, "bus", None), http=self.http)
         return self._orch
 
     # -------------------- поиск --------------------

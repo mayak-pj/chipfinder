@@ -75,5 +75,6 @@
   "result.rejected": "Result: REJECTED — the documents found do not fit ({queries:query|queries}, {seconds} s)",
   "result.not_found": "Result: NOT FOUND — {sources:source|sources} checked ({queries:query|queries}, {seconds} s)",
 
+  "photo.recognized": "Photo recognized: {part}",
   "error.internal": "Program error at stage {stage}: {error}"
 }

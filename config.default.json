@@ -76,5 +76,7 @@
       "E9_maker": 10, "E9_catalog": 5, "E9_bad": -10, "E10": 10, "E11": -30
     },
     "thresholds": {"confirmed": 70, "probable": 45}
-  }
+  },
+
+  "extensions": {"enabled": [], "disabled": [], "settings": {}}
 }
