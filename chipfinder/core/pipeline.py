@@ -100,6 +100,9 @@ class ChipPipeline:
         hits = self.m["web_search"].search(cands, progress=progress, cancel=cancel, levels=levels)
         known = set(h.location for h in r.hits)
         r.hits += [h for h in hits if h.location not in known]
+        found = [h for h in hits if h.is_local]       # поиск уже скачал, проверил и положил в библиотеку
+        if found and not r.datasheet_path:
+            r.datasheet_path = max(found, key=lambda x: x.score).location
         self._say(r, progress, "Интернет: найдено ссылок %d, из них PDF %d" %
                   (len(hits), sum(1 for h in hits if h.is_pdf)))
         if self.opts.get("auto_download", True) and not r.datasheet_path:

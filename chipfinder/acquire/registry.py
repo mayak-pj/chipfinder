@@ -112,10 +112,7 @@ class Registry:
 
 
 def legacy_sources(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Старый вид sources.json (engines + levels) для поиска v1 `modules/web/` и проверки sites.
-
-    Убирается вместе с `modules/web/`, когда его заменит оркестратор.
-    """
+    """Старый вид sources.json (engines + levels) — нужен только проверке sites в наборе для Win7."""
     if "sources" not in data:
         return data
     entries = [s for s in data["sources"] if s.get("enabled", True) or s.get("adapter") == "engine_html"]
