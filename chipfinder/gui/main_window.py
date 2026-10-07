@@ -9,7 +9,7 @@ import os
 import sys
 
 from PyQt5.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QImage, QPixmap
+from PyQt5.QtGui import QDesktopServices, QIcon, QImage, QPixmap
 from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QComboBox, QDockWidget, QFileDialog, QFormLayout,
                              QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem,
                              QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox,
@@ -20,6 +20,7 @@ from ..core.config import resolve_path
 from ..core.pipeline import ChipPipeline, create_context
 from ..core.utils import safe_filename
 from ..extensions.loader import ExtensionManager
+from ..ui import theme as ui_theme
 from .dialogs import AdaptersDialog, DiagnosticsDialog, ExtensionsDialog, SettingsDialog
 from .worker import ConsentBridge, Job
 
@@ -72,7 +73,7 @@ class DropList(QListWidget):
         if self.count() == 0:
             from PyQt5.QtGui import QPainter
             p = QPainter(self.viewport())
-            p.setPen(QColor("#888"))
+            p.setPen(ui_theme.current().qcolor("text_muted"))
             p.drawText(self.viewport().rect(), Qt.AlignCenter | Qt.TextWordWrap,
                        "Перетащите сюда\nвырезанные фото\nмикросхем\n(файлы или папку)")
 
@@ -95,6 +96,9 @@ class MainWindow(QMainWindow):
         self.ext_failed.connect(self._ext_failed, Qt.QueuedConnection)
         self.setWindowTitle("ChipFinder — поиск datasheet по фото микросхемы")
         self.resize(1280, 820)
+        # тема — до построения окна: иконки и цвета берутся из неё; стрелки для QSS — в папке программы
+        self.theme = ui_theme.apply_theme(QApplication.instance(), ui_theme.configured_theme(app_dir),
+                                          os.path.join(app_dir, "tmp", "theme"))
         self._build_ui()
         self._load_context()
 
@@ -102,23 +106,28 @@ class MainWindow(QMainWindow):
     def _build_ui(self):
         tb = self.toolbar = QToolBar("Действия")
         tb.setMovable(False)
+        tb.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        size = self.theme.t["icon_size_md"]
+        gap = self.theme.t["space_xs"]             # Fusion ставит подпись вплотную к иконке — поле в самой иконке
+        tb.setIconSize(QSize(size + gap, size))
         self.addToolBar(tb)
+        ico = self.theme.icon
 
-        def act(text, slot, tip=""):
-            a = QAction(text, self)
+        def act(text, icon, slot, tip=""):
+            a = QAction(ico(icon, pad=gap), text, self)
             a.triggered.connect(slot)
             if tip:
                 a.setToolTip(tip)
             tb.addAction(a)
             return a
-        act("Добавить фото…", self.add_files_dialog)
-        self.a_run = act("Распознать", self.run_selected, "Распознать выбранные (или все новые) фото")
-        self.a_web = act("Искать в интернете", lambda: self.web_search(None), "Поиск по уровням до первых хороших результатов")
-        self.a_web_all = act("Искать везде", lambda: self.web_search(["all"]), "Пройти все уровни поиска")
-        self.a_stop = act("Стоп", self.stop_job)
+        act("Добавить фото…", "image-plus", self.add_files_dialog)
+        self.a_run = act("Распознать", "scan-text", self.run_selected, "Распознать выбранные (или все новые) фото")
+        self.a_web = act("Искать в интернете", "search", lambda: self.web_search(None), "Поиск по уровням до первых хороших результатов")
+        self.a_web_all = act("Искать везде", "globe", lambda: self.web_search(["all"]), "Пройти все уровни поиска")
+        self.a_stop = act("Стоп", "square", self.stop_job)
         tb.addSeparator()
-        act("Сохранить отчёт", self.save_report)
-        act("Сводка CSV", self.save_summary)
+        act("Сохранить отчёт", "file-text", self.save_report)
+        act("Сводка CSV", "table", self.save_summary)
 
         mb = self.menuBar()
         m = mb.addMenu("Файл")
@@ -154,11 +163,11 @@ class MainWindow(QMainWindow):
         # слева — список фото
         left = QWidget()
         ll = QVBoxLayout(left)
-        ll.setContentsMargins(4, 4, 4, 4)
+        ll.setContentsMargins(8, 8, 0, 8)
         self.list = DropList(self.add_files)
         self.list.currentItemChanged.connect(self.show_current)
         ll.addWidget(self.list)
-        rm = QPushButton("Убрать из списка")
+        rm = QPushButton(ico("trash-2"), "Убрать из списка")
         rm.clicked.connect(self.remove_selected)
         ll.addWidget(rm)
         split.addWidget(left)
@@ -166,14 +175,14 @@ class MainWindow(QMainWindow):
         # справа
         right = QWidget()
         rl = QVBoxLayout(right)
-        rl.setContentsMargins(4, 4, 4, 4)
+        rl.setContentsMargins(0, 8, 8, 8)
         top = QHBoxLayout()
         imgbox = QGroupBox("Изображение")
         il = QVBoxLayout(imgbox)
         self.img_label = QLabel("—")
         self.img_label.setAlignment(Qt.AlignCenter)
         self.img_label.setMinimumSize(420, 240)
-        self.img_label.setStyleSheet("background:#fafafa;border:1px solid #ddd")
+        self.img_label.setObjectName("imagePreview")
         il.addWidget(self.img_label)
         self.variant_box = QComboBox()
         self.variant_box.currentIndexChanged.connect(self.show_variant)
@@ -192,7 +201,7 @@ class MainWindow(QMainWindow):
         self.ocr_mode = QComboBox()
         self.ocr_mode.setToolTip("Способ распознавания: «Авто» — по цепочке до уверенного результата; конкретный способ; "
                                  "«Сравнить все» — все доступные способы, таблица в заключении")
-        self.rerun = QPushButton("Распознать заново")
+        self.rerun = QPushButton(ico("refresh-cw"), "Распознать заново")
         self.rerun.setToolTip("Распознать это фото ещё раз выбранным способом")
         self.rerun.clicked.connect(self.recognize_again)
         row = QHBoxLayout()
@@ -232,7 +241,7 @@ class MainWindow(QMainWindow):
 
         docs = QWidget()
         dl = QVBoxLayout(docs)
-        dl.setContentsMargins(0, 0, 0, 0)
+        dl.setContentsMargins(8, 8, 8, 8)
         self.hits = QTableWidget(0, 7)
         self.hits.setHorizontalHeaderLabels(["Где", "Источник", "Название", "Оценка", "PDF", "Адрес", "Примечание"])
         self.hits.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -242,12 +251,12 @@ class MainWindow(QMainWindow):
         self.hits.doubleClicked.connect(lambda _i: self.use_hit())
         dl.addWidget(self.hits)
         hb = QHBoxLayout()
-        for text, slot in (("Использовать как datasheet", self.use_hit),
-                           ("Скачать и проверить", self.download_hit),
-                           ("Открыть PDF", self.open_hit_pdf),
-                           ("Открыть ссылку в браузере", self.open_hit_browser),
-                           ("Копировать адрес", self.copy_hit)):
-            bb = QPushButton(text)
+        for text, icon, slot in (("Использовать как datasheet", "file-check", self.use_hit),
+                                 ("Скачать и проверить", "download", self.download_hit),
+                                 ("Открыть PDF", "file-text", self.open_hit_pdf),
+                                 ("Открыть ссылку в браузере", "external-link", self.open_hit_browser),
+                                 ("Копировать адрес", "copy", self.copy_hit)):
+            bb = QPushButton(self.theme.icon(icon), text)
             bb.clicked.connect(slot)
             hb.addWidget(bb)
         hb.addStretch()
@@ -449,7 +458,7 @@ class MainWindow(QMainWindow):
                 mem = r.memory.has_memory if r.memory else None
                 tag = {True: "ПАМЯТЬ", False: "без памяти", None: "?"}[mem]
                 it.setText("%s\n%s — %s" % (os.path.basename(path), r.chosen_part or "?", tag))
-                it.setForeground(QColor("#8a1c1c") if mem else (QColor("#1b5e20") if mem is False else QColor("#555")))
+                it.setForeground(self.theme.qcolor("danger" if mem else ("success" if mem is False else "text_muted")))
 
     def web_search(self, levels):
         d = self.current()
@@ -586,9 +595,9 @@ class MainWindow(QMainWindow):
             for j, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 if h.location == r.datasheet_path:
-                    it.setBackground(QColor("#e3f2fd"))
+                    it.setBackground(self.theme.qcolor("accent_soft"))
                 if not h.allowed and not h.is_local:
-                    it.setForeground(QColor("#999"))
+                    it.setForeground(self.theme.qcolor("text_disabled"))
                 self.hits.setItem(i, j, it)
         self.hits.resizeColumnToContents(0)
         self.hits.resizeColumnToContents(3)
@@ -881,6 +890,14 @@ def qt_plugins_dir() -> str:
     return d if os.path.isdir(os.path.join(d, "platforms")) else ""
 
 
+def install_russian(app) -> None:
+    """Русские подписи стандартных кнопок Qt (Yes/No → Да/Нет)."""
+    from PyQt5.QtCore import QLibraryInfo, QLocale, QTranslator
+    tr = QTranslator(app)
+    if tr.load(QLocale("ru_RU"), "qtbase", "_", QLibraryInfo.location(QLibraryInfo.TranslationsPath)):
+        app.installTranslator(tr)
+
+
 def main(app_dir: str) -> int:
     # PyQt5 сам сообщает Qt путь к плагинам, но не в Юникоде: из папки с русскими буквами окно
     # не запускается («no Qt platform plugin could be initialized»). Задаём путь явно.
@@ -891,11 +908,7 @@ def main(app_dir: str) -> int:
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     app = QApplication(sys.argv)
     app.setApplicationName("ChipFinder")
-    # русские подписи стандартных кнопок Qt (Yes/No → Да/Нет)
-    from PyQt5.QtCore import QLibraryInfo, QLocale, QTranslator
-    tr = QTranslator(app)
-    if tr.load(QLocale("ru_RU"), "qtbase", "_", QLibraryInfo.location(QLibraryInfo.TranslationsPath)):
-        app.installTranslator(tr)
+    install_russian(app)
     w = MainWindow(app_dir)
     w.show()
     args = [a for a in sys.argv[1:] if os.path.exists(a)]

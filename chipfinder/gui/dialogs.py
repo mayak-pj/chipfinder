@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QF
 
 from ..core.config import save_user_config
 from ..extensions.loader import STATES as EXTENSION_STATES
+from ..ui import theme as ui_theme
 
 EXTENSION_COLORS = {"active": "#1a7f37", "failed": "#c62828", "incompatible": "#c62828"}
 
@@ -23,8 +24,9 @@ def _path_row(edit: QLineEdit, folder: bool, parent, filt: str = "") -> QWidget:
     lay = QHBoxLayout(w)
     lay.setContentsMargins(0, 0, 0, 0)
     lay.addWidget(edit)
-    b = QPushButton("…")
-    b.setFixedWidth(30)
+    b = QPushButton(ui_theme.current().icon("folder-open"), "")
+    b.setToolTip("Выбрать…")
+    b.setProperty("iconOnly", True)
 
     def pick():
         if folder:

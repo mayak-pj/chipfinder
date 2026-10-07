@@ -81,5 +81,7 @@
     "thresholds": {"confirmed": 70, "probable": 45}
   },
 
+  "ui": {"theme": "light"},
+
   "extensions": {"enabled": [], "disabled": [], "settings": {}}
 }

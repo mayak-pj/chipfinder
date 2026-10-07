@@ -53,6 +53,8 @@ def snap(png, app_dir):
         scr = app.primaryScreen()
         info.update(window="%dx%d" % (w.width(), w.height()), screen="%dx%d" % (scr.size().width(), scr.size().height()),
                     dpi=scr.logicalDotsPerInch())
+        theme = getattr(w, "theme", None)       # шаг 7.2: какие шрифты нашлись, загрузились ли стрелки QSS
+        info.update(theme=theme.info if theme else None)
         print("snap: %s" % info)
         app.quit()
     QTimer.singleShot(800, grab)
