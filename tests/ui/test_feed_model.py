@@ -72,7 +72,8 @@ def test_counters_and_russian_text():
 
 
 def test_console_observer_uses_the_same_counters():
-    sys.path.insert(0, os.path.join(APP, "tools"))
+    for sub in ("tools", "checks"):                          # в сборке search_cli.py лежит в checks/
+        sys.path.insert(0, os.path.join(APP, sub))
     import search_cli
     out = io.StringIO()
     obs = search_cli.ConsoleObserver(out)

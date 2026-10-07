@@ -84,6 +84,7 @@ jobs:
       contents: write
     env:
       QT_QPA_PLATFORM: offscreen
+      QT_QPA_FONTDIR: C:/Windows/Fonts      # offscreen без системных шрифтов не рисует текст
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
