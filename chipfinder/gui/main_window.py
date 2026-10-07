@@ -987,9 +987,12 @@ class MainWindow(QMainWindow):
 
     def settings(self):
         dlg = SettingsDialog(self.ctx, self)
+        old = ui_theme.configured_theme(self.app_dir)
         if dlg.exec_():
             self._load_context()
             self.log("Настройки сохранены и применены")
+            if ui_theme.configured_theme(self.app_dir) != old:
+                QMessageBox.information(self, "Тема", "Тема сменится после перезапуска программы.")
 
     # ------------------------------------------------------------ расширения
     def _load_extensions(self):

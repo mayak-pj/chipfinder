@@ -77,7 +77,7 @@ def test_accept_and_reject_run_in_background(window, tmp_path, monkeypatch):
     assert not calls
     w.docs_table.selectRow(0)
     w.decide_doc(True)
-    _pump(app, lambda: w.is_idle() and calls)
+    _pump(app, lambda: w.is_idle() and calls and u"Подтверждён" in w.why_view.toPlainText())
     assert calls == [(probable, True)]
     assert w.docs_model.record(w.docs_table.currentIndex().row()) is probable
     assert u"Подтверждён" in w.why_view.toPlainText()
@@ -86,7 +86,7 @@ def test_accept_and_reject_run_in_background(window, tmp_path, monkeypatch):
     assert len(calls) == 1
     monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.Yes))
     w.decide_doc(False)
-    _pump(app, lambda: w.is_idle() and len(calls) == 2)
+    _pump(app, lambda: w.is_idle() and len(calls) == 2 and u"Отклонён" in w.why_view.toPlainText())   # обновление — по сигналу
     assert calls[1] == (probable, False) and u"Отклонён" in w.why_view.toPlainText()
 
 

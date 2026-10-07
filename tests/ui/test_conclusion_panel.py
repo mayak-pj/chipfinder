@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Шаг 7.7: заключение «Не найдено» — панель с кнопками, раздел в HTML-отчёте и ячейка CSV."""
+"""Шаг 7.7 (+ выбор темы в настройках): заключение «Не найдено» — панель с кнопками, раздел в HTML-отчёте и ячейка CSV."""
 import io
 import json
 import os
@@ -84,3 +84,14 @@ def test_add_to_access_request():
     assert add_to_access_request(Log(), n, "NE555P")
     assert Log.calls[0] == ("alldatasheet.com", "network_blocked", "NE555P", n.url, "catalog")
     assert not add_to_access_request(None, n, "NE555P")
+
+
+def test_settings_theme_choice(window):
+    from chipfinder.gui.dialogs import SettingsDialog
+    from chipfinder.ui import theme as ui_theme
+    w, app = window
+    d = SettingsDialog(w.ctx, w)
+    assert d.theme_box.currentData() == "light"
+    d.theme_box.setCurrentIndex(d.theme_box.findData("dark"))
+    d._save()
+    assert ui_theme.configured_theme(w.app_dir) == "dark"

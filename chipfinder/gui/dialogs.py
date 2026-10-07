@@ -108,6 +108,11 @@ class SettingsDialog(QDialog):
         self.auto_dl.setChecked(bool(pipe.get("auto_download", True)))
         form.addRow("Поиск:", self.auto_web)
         form.addRow("", self.auto_dl)
+        self.theme_box = QComboBox()
+        self.theme_box.addItem("Светлая", "light")
+        self.theme_box.addItem("Тёмная", "dark")
+        self.theme_box.setCurrentIndex(max(0, self.theme_box.findData(ui_theme.theme_name(str(cfg.get("ui", {}).get("theme", ""))))))
+        form.addRow("Тема:", self.theme_box)
         self.follow = QCheckBox("Следить за распознаванием: список и карточка идут за проверяемым фото")
         self.follow.setChecked(bool(cfg.get("ui", {}).get("follow_recognition", True)))
         form.addRow("Окно:", self.follow)
@@ -156,7 +161,7 @@ class SettingsDialog(QDialog):
             "network": {"offline": self.offline.isChecked(), "proxy": self.proxy.text().strip(),
                         "max_pdf_mb": self.maxpdf.value()},
             "pipeline": {"auto_web_search": self.auto_web.isChecked(), "auto_download": self.auto_dl.isChecked()},
-            "ui": {"follow_recognition": self.follow.isChecked()},
+            "ui": {"follow_recognition": self.follow.isChecked(), "theme": self.theme_box.currentData()},
         }
         if self.ocr_mode.count():
             user["recognition"] = {"mode": self.ocr_mode.currentData()}

@@ -149,7 +149,7 @@ def test_follow_switched_off_in_settings(window, tmp_path, monkeypatch):
     dlg.follow.setChecked(False)
     dlg._save()
     with io.open(cfg_path, encoding="utf-8") as f:
-        assert json.load(f)["ui"] == {"follow_recognition": False}
+        assert json.load(f)["ui"] == {"follow_recognition": False, "theme": "light"}
     w._load_context()
     w, app, paths, step = _prepare(window, tmp_path, monkeypatch)
     w.run_selected()
