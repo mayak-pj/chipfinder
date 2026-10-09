@@ -14,8 +14,8 @@ from test_photo_cards import _near, _report  # noqa: E402
 
 
 def _feed(qapp, theme="light"):
-    from chipfinder.gui.search_feed import SearchFeed
-    from chipfinder.ui import theme as ui_theme
+    from digger.gui.search_feed import SearchFeed
+    from digger.ui import theme as ui_theme
     feed = SearchFeed(ui_theme.apply_theme(qapp, theme))
     feed.resize(900, 220)
     return feed
@@ -24,7 +24,7 @@ def _feed(qapp, theme="light"):
 # -------------------- плавная смена текста --------------------
 
 def test_status_text_changes_smoothly(qapp):
-    from chipfinder.gui.search_feed import FADE_MS, FadeText
+    from digger.gui.search_feed import FADE_MS, FadeText
     label = FadeText()
     label.resize(400, 24)
     label.setText(u"поиск в локальной базе…")            # виджет не на экране — плавность не нужна
@@ -89,7 +89,7 @@ def test_feed_shows_language_text_counters_and_history(qapp):
 
 
 def test_feed_stop_button_and_running_state(qapp):
-    from chipfinder.gui.feed_model import STATE_ROLE
+    from digger.gui.feed_model import STATE_ROLE
     feed = _feed(qapp)
     stops = []
     feed.stop_requested.connect(lambda: stops.append(1))
@@ -104,7 +104,7 @@ def test_feed_stop_button_and_running_state(qapp):
 
 @pytest.mark.parametrize("theme", ["light", "dark"])
 def test_feed_is_painted_with_theme_colors(qapp, theme):
-    from chipfinder.ui import theme as ui_theme
+    from digger.ui import theme as ui_theme
     feed = _feed(qapp, theme)
     try:
         feed.set_level_names({"catalog": u"1. Сайты-каталоги datasheet", "china": u"3. Китайский интернет"})
@@ -146,7 +146,7 @@ def _window_with_part(window, tmp_path):
 
 
 def test_window_feed_follows_search_and_stop_works(window, tmp_path, monkeypatch):
-    from chipfinder.gui.feed_model import STATE_ROLE
+    from digger.gui.feed_model import STATE_ROLE
     w, app = _window_with_part(window, tmp_path)
     feed = w.search_feed
     assert w.feed_slot is feed and feed.model.groups() == [("ocr", 1)]       # «фото распознано»

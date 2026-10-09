@@ -9,13 +9,13 @@ import sys
 
 import pytest
 
-from chipfinder.acquire.events import EventBus, render
-from chipfinder.core.models import ImageVariant, OcrLine, OcrResult
-from chipfinder.core.pipeline import ChipPipeline
-from chipfinder.core.utils import imread
-from chipfinder.recognition import manager as manager_module
-from chipfinder.recognition.api import OcrProvider
-from chipfinder.recognition.manager import ProviderInfo, RecognitionManager
+from digger.acquire.events import EventBus, render
+from digger.core.models import ImageVariant, OcrLine, OcrResult
+from digger.core.pipeline import ChipPipeline
+from digger.core.utils import imread
+from digger.recognition import manager as manager_module
+from digger.recognition.api import OcrProvider
+from digger.recognition.manager import ProviderInfo, RecognitionManager
 
 HAS_PPOCR = all(importlib.util.find_spec(m) for m in ("onnxruntime", "rapidocr_onnxruntime"))
 needs_ppocr = pytest.mark.skipif(not HAS_PPOCR, reason="не установлен rapidocr-onnxruntime")
@@ -74,8 +74,8 @@ def _write_plugin(plugins, folder, manifest, code):
 
 
 PLUGIN_CODE = u'''# -*- coding: utf-8 -*-
-from chipfinder.core.models import OcrLine, OcrResult
-from chipfinder.recognition.api import OcrProvider
+from digger.core.models import OcrLine, OcrResult
+from digger.recognition.api import OcrProvider
 
 
 class Provider(OcrProvider):
@@ -345,7 +345,7 @@ def test_window_asks_consent_from_background_thread(ctx, monkeypatch):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     pytest.importorskip("PyQt5")
     from PyQt5.QtWidgets import QApplication
-    from chipfinder.gui.worker import ConsentBridge
+    from digger.gui.worker import ConsentBridge
     app = QApplication.instance() or QApplication([])
     bridge = ConsentBridge()
     shown = []

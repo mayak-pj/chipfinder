@@ -6,12 +6,12 @@ import os
 
 import pytest
 
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import Registry
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.sources.base import SourceEntry
-from chipfinder.acquire.sources.engine_html import EngineHtml, bing_target
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.query import Query
+from digger.acquire.registry import Registry
+from digger.acquire.events import EventBus
+from digger.acquire.sources.base import SourceEntry
+from digger.acquire.sources.engine_html import EngineHtml, bing_target
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,7 +86,7 @@ def test_empty_and_captcha(tmp_path):
 
 def test_results_page_mentioning_turnstile_is_not_captcha():
     """Выезд 2: обычная выдача Bing упоминает turnstile в скрипте — адаптер принимал её за капчу."""
-    from chipfinder.acquire.sources.engine_html import bing_is_captcha, decode_bing
+    from digger.acquire.sources.engine_html import bing_is_captcha, decode_bing
     page = ('<script>var k=["rd_tb_cnt","cf-turnstile-wrapper","rcp-"];</script><ol id="b_results">'
             '<li class="b_algo"><h2><a href="https://example.org/ne555.pdf">NE555 datasheet</a></h2><p>Timer</p></li></ol>')
     assert not bing_is_captcha(page) and decode_bing(page)[0][0] == "https://example.org/ne555.pdf"

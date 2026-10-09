@@ -226,7 +226,7 @@ def write(name, folder):
 def main(folder=None):
     if not folder:
         import tempfile
-        folder = tempfile.mkdtemp(prefix="chipfinder_pdfs_")
+        folder = tempfile.mkdtemp(prefix="digger_pdfs_")
     os.makedirs(folder, exist_ok=True)
     for name in DOCS:
         print(write(name, folder))

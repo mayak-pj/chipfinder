@@ -34,7 +34,7 @@ def snap(png, app_dir):
     os.chdir(app_dir)
     from PyQt5.QtCore import QBuffer, QCoreApplication, QIODevice, QTimer
     from PyQt5.QtWidgets import QApplication
-    from chipfinder.gui.main_window import MainWindow, qt_plugins_dir
+    from digger.gui.main_window import MainWindow, qt_plugins_dir
     plugins = qt_plugins_dir()
     if plugins:
         QCoreApplication.addLibraryPath(plugins)

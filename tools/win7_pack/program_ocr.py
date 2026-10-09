@@ -76,7 +76,7 @@ def run(ctx):
     if ctx.app_dir not in sys.path:
         sys.path.insert(0, ctx.app_dir)
     try:
-        from chipfinder.core.pipeline import create_context
+        from digger.core.pipeline import create_context
         prog = create_context(ctx.app_dir)
     except BaseException:  # noqa — полный текст ошибки — в отчёт
         return {"status": "fail", "error": "программа не загрузилась", "traceback": traceback.format_exc()}

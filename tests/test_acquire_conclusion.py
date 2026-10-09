@@ -4,18 +4,18 @@ import logging
 
 import pytest
 
-from chipfinder.acquire.conclusion import build_conclusion, search_link
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.models import Lead, PhotoContext
-from chipfinder.acquire.orchestrator import Orchestrator
-from chipfinder.acquire.registry import Registry
-from chipfinder.acquire.sources.base import SourceAdapter, SourceError
-from chipfinder.acquire.sources.engine_html import EngineHtml
-from chipfinder.acquire.store import AcquireStore
-from chipfinder.acquire.verify import SourceTrust
-from chipfinder.core.interfaces import Context
-from chipfinder.core.netsafe import SafeHttp
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.conclusion import build_conclusion, search_link
+from digger.acquire.events import EventBus
+from digger.acquire.models import Lead, PhotoContext
+from digger.acquire.orchestrator import Orchestrator
+from digger.acquire.registry import Registry
+from digger.acquire.sources.base import SourceAdapter, SourceError
+from digger.acquire.sources.engine_html import EngineHtml
+from digger.acquire.store import AcquireStore
+from digger.acquire.verify import SourceTrust
+from digger.core.interfaces import Context
+from digger.core.netsafe import SafeHttp
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 from tests.fakes.fake_http import FakeHttp, FakeResponse
 from tests.fixtures import make_pdfs
 
@@ -47,7 +47,7 @@ def source(sid, level, domain, *urls, **options):
 
 @pytest.fixture()
 def env(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     with open(make_pdfs.write("datasheet", tmp_path), "rb") as f:
         pdf = f.read()

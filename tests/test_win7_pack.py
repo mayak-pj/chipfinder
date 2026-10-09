@@ -68,7 +68,7 @@ def test_only_and_order(tmp_path):
 
 
 def test_default_app_dir():
-    assert rc.default_app_dir("/x/ChipFinder/checks") == "/x/ChipFinder"
+    assert rc.default_app_dir("/x/Digger/checks") == "/x/Digger"
     assert rc.default_app_dir("/repo/tools/win7_pack") == "/repo"
 
 

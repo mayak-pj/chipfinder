@@ -5,10 +5,10 @@
 и перезапустите программу. Папка plugins/ уже подключена к поиску модулей.
 
 Любой модуль можно заменить так же: достаточно наследовать нужный интерфейс
-из chipfinder/core/interfaces.py и вернуть те же структуры данных (models.py).
+из digger/core/interfaces.py и вернуть те же структуры данных (models.py).
 """
-from chipfinder.modules.memory_rules import RuleMemoryAnalyzer
-from chipfinder.core.models import MemoryItem
+from digger.modules.memory_rules import RuleMemoryAnalyzer
+from digger.core.models import MemoryItem
 
 
 class MyMemoryAnalyzer(RuleMemoryAnalyzer):

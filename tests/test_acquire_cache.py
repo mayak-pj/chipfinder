@@ -2,10 +2,10 @@
 """Кэши поиска (шаг 5.3, ARCHITECTURE §4.9): выдача, негативный кэш, здоровье доменов. Время сдвигается."""
 import logging
 
-from chipfinder.acquire.cache import AcquireCache, DAY
-from chipfinder.acquire.models import Lead
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.cache import AcquireCache, DAY
+from digger.acquire.models import Lead
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 
 class Clock:
@@ -20,7 +20,7 @@ class Clock:
 
 
 def make(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     clock = Clock()
     return AcquireCache(db, clock=clock), clock

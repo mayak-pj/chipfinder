@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from chipfinder.core.netsafe import NetBlocked, SafeHttp
+from digger.core.netsafe import NetBlocked, SafeHttp
 from fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -102,7 +102,7 @@ def test_one_request_per_interval_per_domain_from_many_threads(tmp_path):
     import threading
     from collections import defaultdict
 
-    from chipfinder.core.netsafe import host_of
+    from digger.core.netsafe import host_of
     from fakes.fake_http import VirtualTime
 
     vt, seen, lock = VirtualTime(), defaultdict(list), threading.Lock()

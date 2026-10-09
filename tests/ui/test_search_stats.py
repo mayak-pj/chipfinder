@@ -7,11 +7,11 @@ import sys
 
 import pytest
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.stats import SearchStats, StatsRecorder
-from chipfinder.core.interfaces import Context
-from chipfinder.extensions.loader import BUILTIN_DIR
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.events import EventBus
+from digger.acquire.stats import SearchStats, StatsRecorder
+from digger.core.interfaces import Context
+from digger.extensions.loader import BUILTIN_DIR
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 pytest.importorskip("PyQt5")
 
@@ -24,7 +24,7 @@ def _mod():
 
 
 def _stats(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     stats = SearchStats(SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t"))))
     bus = EventBus()
     rec = StatsRecorder(stats, bus)

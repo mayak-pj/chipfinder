@@ -35,7 +35,7 @@ def run(ctx):
     try:
         import live_check
         import sites
-        from chipfinder.acquire.registry import Registry
+        from digger.acquire.registry import Registry
         path = os.path.join(ctx.app_dir, "data", "sources.json")
         if not os.path.isfile(path):
             return {"status": "fail", "error": "нет data/sources.json"}

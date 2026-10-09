@@ -5,12 +5,12 @@ import time
 
 import pytest
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.models import AcquisitionRecord, Lead, PhotoContext, Verdict
-from chipfinder.acquire.orchestrator import SearchResult
-from chipfinder.core.interfaces import CancelToken
-from chipfinder.core.models import Candidate
-from chipfinder.acquire.websearch import AcquireWebSearch
+from digger.acquire.events import EventBus
+from digger.acquire.models import AcquisitionRecord, Lead, PhotoContext, Verdict
+from digger.acquire.orchestrator import SearchResult
+from digger.core.interfaces import CancelToken
+from digger.core.models import Candidate
+from digger.acquire.websearch import AcquireWebSearch
 
 
 class FakeOrch:
@@ -131,7 +131,7 @@ def test_cancel_token_stops_orchestrator(ws):
 
 
 def test_download_refuses_unlisted_site(ws):
-    from chipfinder.core.models import DatasheetHit
+    from digger.core.models import DatasheetHit
     h = DatasheetHit(part="NE555", title="x", location="https://evil.example/a.pdf", source="s", level="catalog",
                      allowed=False, is_pdf=True)
     res = ws.download(h)

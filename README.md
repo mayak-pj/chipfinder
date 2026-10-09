@@ -1,4 +1,4 @@
-# ChipFinder — поиск datasheet по фото микросхемы
+# Digger — поиск datasheet по фото микросхемы
 
 Программа для Windows 7 (и новее). Вы перетаскиваете в окно вырезанные с фото плат
 микросхемы, программа:
@@ -17,10 +17,10 @@
 ## 1. Установка
 
 ### Портативная версия (рекомендуется, без установки и прав администратора)
-1. GitHub → Releases (или Actions → последняя сборка → Artifacts) → `ChipFinder_portable_win7_x64.zip`.
-2. Распакуйте в свою папку, например `D:\ChipFinder` или в профиль пользователя.
+1. GitHub → Releases (или Actions → последняя сборка → Artifacts) → `Digger_portable_win7_x64.zip`.
+2. Распакуйте в свою папку, например `D:\Digger` или в профиль пользователя.
 3. `Самопроверка.bat` — должно быть «САМОПРОВЕРКА ПРОЙДЕНА», отчёт в `logs\selftest.txt`.
-4. Запуск — `ChipFinder.bat`. Внутри уже есть Python 3.8.10, пакеты и Tesseract (`tesseract\`);
+4. Запуск — `Digger.bat`. Внутри уже есть Python 3.8.10, пакеты и Tesseract (`tesseract\`);
    программа пишет только в свою папку. Состав сборки — `build_info.txt`.
 
 Сборка: `python tools/build_portable.py` (на Mac без 7-Zip — с ключом `--no-tesseract`, для проверки состава). PP-OCR (rapidocr-onnxruntime с моделями, onnxruntime 1.11.1) ставится в `python/Lib/site-packages` из `requirements.txt`, DLL Visual C++ кладутся рядом с `python.exe`.
@@ -32,17 +32,17 @@
 |---|---|---|
 | Python **3.8.10** x64 | python.org → Downloads → Windows → `python-3.8.10-amd64.exe` | Последняя версия Python с установщиком для Windows 7. При установке отметьте **Add Python to PATH**. На Windows 7 SP1 нужно обновление KB2533623 (обычно уже стоит). |
 | Tesseract OCR | github.com/UB-Mannheim/tesseract → Releases (или wiki «Tesseract at UB Mannheim») | Ставьте в `C:\Program Files\Tesseract-OCR`. Если свежая 5.x не запускается на Windows 7 — возьмите более старую сборку 5.x или 4.1. Достаточно английского языка (eng). |
-| Пакеты Python | архив `ChipFinder_wheels_win7_x64.zip` | Распакуйте в папку `wheels` внутри программы — установка пройдёт **без интернета**. Без неё пакеты будут скачаны с PyPI. |
+| Пакеты Python | архив `Digger_wheels_win7_x64.zip` | Распакуйте в папку `wheels` внутри программы — установка пройдёт **без интернета**. Без неё пакеты будут скачаны с PyPI. |
 
 #### Шаги
-1. Распакуйте программу, например в `C:\ChipFinder` (путь лучше без русских букв).
-2. Распакуйте архив пакетов так, чтобы получилось `C:\ChipFinder\wheels\*.whl`.
+1. Распакуйте программу, например в `C:\Digger` (путь лучше без русских букв).
+2. Распакуйте архив пакетов так, чтобы получилось `C:\Digger\wheels\*.whl`.
 3. Запустите `install_win7.bat`. Он создаст окружение `venv`, установит пакеты и запустит самопроверку
    (4 тестовых чипа — должно быть «ИТОГ: всё верно»).
 4. Запуск — `run.bat` (фото можно перетаскивать прямо на этот файл).
 
-Если хотите одну папку с `ChipFinder.exe` без установки Python на другие компьютеры — запустите `build_exe.bat`
-(результат в `dist\ChipFinder`). Tesseract на этих компьютерах всё равно нужен.
+Если хотите одну папку с `Digger.exe` без установки Python на другие компьютеры — запустите `build_exe.bat`
+(результат в `dist\Digger`). Tesseract на этих компьютерах всё равно нужен.
 
 ### Первая настройка («Настройки…»)
 * **Папки с datasheet** — ваши сетевые диски (`\\server\share\datasheets` или `Z:\datasheets`). Программа их только читает.
@@ -77,13 +77,13 @@
 ## 3. Модули (меняются независимо)
 
 Программа — это конвейер из 9 модулей. Какой класс выполняет каждую роль, задаётся в `config.json → modules`.
-Чтобы заменить модуль, напишите класс-наследник интерфейса из `chipfinder/core/interfaces.py`,
+Чтобы заменить модуль, напишите класс-наследник интерфейса из `digger/core/interfaces.py`,
 положите файл в папку `plugins/` и укажите его в `config.json`. Пример — `plugins/example_memory_plugin.py`.
 
 | Роль | Модуль по умолчанию | Что делает |
 |---|---|---|
 | `enhancer` | `enhance_opencv` | находит корпус, увеличивает, выравнивает наклон, делает 7 вариантов контраста/бинаризации (в т.ч. для лазерной гравировки) |
-| `ocr` | `recognition.manager` | цепочка провайдеров распознавания: PP-OCRv4, запасной Tesseract; свой способ — папка `plugins/ocr_<имя>/` (`provider.json` + `provider.py`, см. `chipfinder/recognition/api.py`) и его id в `config.json → recognition.chain` |
+| `ocr` | `recognition.manager` | цепочка провайдеров распознавания: PP-OCRv4, запасной Tesseract; свой способ — папка `plugins/ocr_<имя>/` (`provider.json` + `provider.py`, см. `digger/recognition/api.py`) и его id в `config.json → recognition.chain` |
 | `identifier` | `identify_rules` | партномер из текста, исправление похожих символов, коды дат/партий, склейка строк, оценка корпуса и выводов |
 | `local_db` | `localdb_sqlite` | индекс сетевых папок, библиотека скачанного, кэш текста PDF, каталог деталей |
 | `web_search` | `acquire.websearch` | многоуровневый безопасный поиск и скачивание |
@@ -178,9 +178,9 @@
 run.bat / install_win7.bat / build_exe.bat
 run.py                  запуск (python run.py [фото...]; --selftest — самопроверка)
 config.default.json     настройки по умолчанию (свои — в config.json)
-chipfinder/core/        ядро: интерфейсы, конвейер, сеть, настройки
-chipfinder/modules/     сменные модули
-chipfinder/gui/         окно программы
+digger/core/        ядро: интерфейсы, конвейер, сеть, настройки
+digger/modules/     сменные модули
+digger/gui/         окно программы
 data/part_rules.json    справочник семейств чипов
 data/sources.json       источники интернет-поиска
 data/library/           скачанные datasheet (можно перенести на сетевой диск)

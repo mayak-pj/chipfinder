@@ -5,10 +5,10 @@ import os
 
 import pytest
 
-from chipfinder.acquire import confirm as C
-from chipfinder.acquire.fingerprint import simhash
-from chipfinder.acquire.models import AcquisitionRecord, DocFacts, FetchResult, Lead, Verdict
-from chipfinder.acquire.verify import SourceTrust
+from digger.acquire import confirm as C
+from digger.acquire.fingerprint import simhash
+from digger.acquire.models import AcquisitionRecord, DocFacts, FetchResult, Lead, Verdict
+from digger.acquire.verify import SourceTrust
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRUST = SourceTrust(makers=("ti.com", "st.com"), catalogs=("alldatasheet.com",))

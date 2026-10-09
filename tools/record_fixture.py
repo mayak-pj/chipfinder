@@ -41,8 +41,8 @@ def record(adapter: str, name: str, url: str, html: str, out_root: str) -> str:
 
 
 def fetch(url: str) -> str:
-    from chipfinder.core.config import load_config, setup_logging
-    from chipfinder.core.netsafe import SafeHttp
+    from digger.core.config import load_config, setup_logging
+    from digger.core.netsafe import SafeHttp
     cfg = load_config(APP)
     http = SafeHttp(cfg["network"], os.path.join(APP, "data", "quarantine"), setup_logging(APP, cfg))
     from urllib.parse import urlsplit

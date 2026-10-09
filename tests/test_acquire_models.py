@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from chipfinder.acquire.models import (
+from digger.acquire.models import (
     AcquisitionRecord, DocFacts, Evidence, FetchResult, Lead, Verdict,
 )
 

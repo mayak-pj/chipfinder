@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from chipfinder.acquire.models import Lead
-from chipfinder.acquire.rank import dedupe, normalize_url, rank, score_lead
+from digger.acquire.models import Lead
+from digger.acquire.rank import dedupe, normalize_url, rank, score_lead
 
 LEVELS = ["catalog", "maker", "search", "china", "forum", "github"]
 

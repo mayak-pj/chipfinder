@@ -8,15 +8,15 @@ import sys
 
 import pytest
 
-from chipfinder.core.config import load_config, setup_logging
-from chipfinder.core.interfaces import Context
-from chipfinder.extensions.api import API_VERSION_STR, api_compatible
-from chipfinder.extensions.loader import ExtensionManager
+from digger.core.config import load_config, setup_logging
+from digger.core.interfaces import Context
+from digger.extensions.api import API_VERSION_STR, api_compatible
+from digger.extensions.loader import ExtensionManager
 
 from conftest import APP
 
 GOOD = u'''# -*- coding: utf-8 -*-
-from chipfinder.extensions.api import Extension as Base
+from digger.extensions.api import Extension as Base
 
 class Extension(Base):
     def setup(self, services):
@@ -34,14 +34,14 @@ class Extension(Base):
     def click(self):
         self.clicks += 1
 '''
-BAD_SETUP = u'''from chipfinder.extensions.api import Extension as Base
+BAD_SETUP = u'''from digger.extensions.api import Extension as Base
 
 class Extension(Base):
     def setup(self, services):
         services.subscribe(lambda e: None)
         raise RuntimeError(u"сломалось при запуске")
 '''
-BAD_LATER = u'''from chipfinder.extensions.api import Extension as Base
+BAD_LATER = u'''from digger.extensions.api import Extension as Base
 
 class Extension(Base):
     def setup(self, services):
@@ -214,7 +214,7 @@ def window(tmp_path, monkeypatch):
         monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: 0))
     write_ext(app_dir / "plugins", "good", GOOD)
     write_ext(app_dir / "plugins", "later", BAD_LATER)
-    from chipfinder.gui.main_window import MainWindow
+    from digger.gui.main_window import MainWindow
     w = MainWindow(str(app_dir))
     yield w, app
     w.close()
@@ -245,7 +245,7 @@ def test_window_extension_adds_tab_and_menu_item(window):
 
 def test_extensions_dialog_lists_and_switches(window):
     from PyQt5.QtCore import Qt
-    from chipfinder.gui.dialogs import ExtensionsDialog
+    from digger.gui.dialogs import ExtensionsDialog
     w, app = window
     dlg = ExtensionsDialog(w.ext, w)
     ids = [x.id for x in w.ext.extensions]

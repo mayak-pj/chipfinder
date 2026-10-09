@@ -2,11 +2,11 @@
 """Адаптивный порядок источников (шаг 6.3, ARCHITECTURE §4.10): история поисков → порядок, разведка, режимы."""
 import logging
 
-from chipfinder.acquire.adaptive import AdaptiveOrder
-from chipfinder.acquire.events import Event, render
-from chipfinder.acquire.stats import SearchStats, StatsRecorder
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.adaptive import AdaptiveOrder
+from digger.acquire.events import Event, render
+from digger.acquire.stats import SearchStats, StatsRecorder
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 from tests.fakes.fake_http import FakeHttp
 from tests.test_acquire_orchestrator import ALL, TI, build, env, keys, pdf_at, search, source  # noqa: F401
 
@@ -15,7 +15,7 @@ DEFAULT = ["catalog", "maker", "search"]
 
 
 def make(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     return SearchStats(SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t"))))
 
 

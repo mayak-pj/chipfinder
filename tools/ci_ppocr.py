@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Шаг CI: проверки `ppocr_check` и `program_ocr` набора, запущенные встроенным Python собранной папки.
 
-    dist\\ChipFinder\\python\\python.exe tools/ci_ppocr.py dist\\ChipFinder
+    dist\\Digger\\python\\python.exe tools/ci_ppocr.py dist\\Digger
 
 Кладёт в `фото/` образцы tests/samples (ответы — в ответы.csv), запускает checks/run_checks.py --only ppocr_check program_ocr
 и требует: PP-OCR загрузился и прочитал не меньше MIN_READ образцов, а программа (менеджер распознавания)
@@ -53,4 +53,4 @@ def main(app):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "dist", "ChipFinder")))
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "dist", "Digger")))

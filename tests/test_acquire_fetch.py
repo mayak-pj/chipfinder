@@ -4,10 +4,10 @@ import hashlib
 import logging
 import os
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.fetch import fetch_to_quarantine
-from chipfinder.acquire.models import Lead
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.events import EventBus
+from digger.acquire.fetch import fetch_to_quarantine
+from digger.acquire.models import Lead
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"

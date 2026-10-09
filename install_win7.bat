@@ -1,5 +1,5 @@
 @echo off
-rem Установка ChipFinder на Windows 7 (Python 3.8 x64)
+rem Установка Digger на Windows 7 (Python 3.8 x64)
 cd /d "%~dp0"
 set PY=
 py -3.8 --version >nul 2>nul && set PY=py -3.8

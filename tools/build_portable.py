@@ -3,8 +3,8 @@
 
     python tools/build_portable.py [--out dist] [--no-tesseract] [--no-zip]
 
-Состав папки ChipFinder/: python/ (embeddable 3.8.10 + пакеты в Lib/site-packages, в т.ч. PP-OCR), tesseract/ (распакованный
-установщик UB Mannheim, tessdata/eng), программа, ChipFinder.bat, Самопроверка.bat. Пакеты — колёса win_amd64
+Состав папки Digger/: python/ (embeddable 3.8.10 + пакеты в Lib/site-packages, в т.ч. PP-OCR), tesseract/ (распакованный
+установщик UB Mannheim, tessdata/eng), программа, Digger.bat, Самопроверка.bat. Пакеты — колёса win_amd64
 для cp38 (pip --platform), поэтому сборку можно запустить и на Mac, чтобы проверить состав. Tesseract
 распаковывается через 7-Zip (на CI есть; на Mac без 7-Zip — ключ --no-tesseract).
 """
@@ -20,8 +20,8 @@ import zipfile
 from packaging.requirements import Requirement
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-NAME = "ChipFinder"
-ZIP_NAME = "ChipFinder_portable_win7_x64.zip"
+NAME = "Digger"
+ZIP_NAME = "Digger_portable_win7_x64.zip"
 
 PY_URL = "https://www.python.org/ftp/python/3.8.10/python-3.8.10-embed-amd64.zip"
 PY_SHA256 = "abbe314e9b41603dde0a823b76f5bbbe17b3de3e5ac4ef06b759da5466711271"
@@ -44,7 +44,7 @@ WIN_ENV = {"sys_platform": "win32", "platform_system": "Windows", "os_name": "nt
            "platform_python_implementation": "CPython"}
 
 INCLUDE = ["run.py", "config.default.json", "README.md", "requirements.txt", "pyproject.toml",
-           "chipfinder", "plugins", "data", "tests"]
+           "digger", "plugins", "data", "tests"]
 CHECKS_SRC = os.path.join(ROOT, "tools", "win7_pack")      # исходники проверочного набора -> checks/ в сборке
 SKIP_DIRS = {"__pycache__", ".pytest_cache"}
 SKIP_EXT = (".pyc", ".sqlite", ".sqlite-journal")
@@ -59,14 +59,14 @@ _ENV = ('if not exist tmp mkdir tmp\n'
         'set "TEMP=%~dp0tmp"\n'
         'set "TMP=%~dp0tmp"\n')
 BATS = {
-    "ChipFinder.bat": (
+    "Digger.bat": (
         '@echo off\n'
-        'rem Запуск ChipFinder (портативная версия, без установки)\n'
+        'rem Запуск Digger (портативная версия, без установки)\n'
         'cd /d "%~dp0"\n' + _ENV +
         'start "" "%~dp0python\\pythonw.exe" "%~dp0run.py" %*\n'),
     "Самопроверка.bat": (
         '@echo off\n'
-        'rem Самопроверка ChipFinder: тесты программы без интернета\n'
+        'rem Самопроверка Digger: тесты программы без интернета\n'
         'cd /d "%~dp0"\n' + _ENV +
         'echo Идёт самопроверка, подождите 1-3 минуты...\n'
         '"%~dp0python\\python.exe" "%~dp0run.py" --selftest > "%~dp0logs\\selftest.txt" 2>&1\n'
@@ -202,7 +202,7 @@ def fetch(url, sha256, cache_dir):
     path = os.path.join(cache_dir, url.rsplit("/", 1)[1])
     if not os.path.isfile(path):
         print("Скачиваю", url)
-        req = urllib.request.Request(url, headers={"User-Agent": "ChipFinder-build/0.6 (portable build script)"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Digger-build/0.6 (portable build script)"})
         with urllib.request.urlopen(req, timeout=300) as r, open(path + ".part", "wb") as f:
             shutil.copyfileobj(r, f, 1 << 20)
         os.replace(path + ".part", path)

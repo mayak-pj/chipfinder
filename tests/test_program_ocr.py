@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from chipfinder.core.models import OcrLine, OcrResult
+from digger.core.models import OcrLine, OcrResult
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools", "win7_pack"))

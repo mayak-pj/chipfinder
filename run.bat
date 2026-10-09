@@ -1,5 +1,5 @@
 @echo off
-rem Запуск ChipFinder. Фото можно перетащить прямо на этот файл.
+rem Запуск Digger. Фото можно перетащить прямо на этот файл.
 cd /d "%~dp0"
 if not exist venv\Scripts\pythonw.exe (
   echo Сначала запустите install_win7.bat

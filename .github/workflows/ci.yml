@@ -74,7 +74,7 @@ jobs:
 
       - name: vermin
         shell: bash
-        run: vermin --target=3.8- --no-tips chipfinder
+        run: vermin --target=3.8- --no-tips digger
 
   portable:
     # Портативная сборка для Win7 x64: артефакт на каждый push, релиз по тегу v*
@@ -102,32 +102,32 @@ jobs:
           python tools/build_portable.py --out dist
       - name: Пакеты импортируются встроенным Python
         shell: cmd
-        run: dist\ChipFinder\python\python.exe -c "import PyQt5.QtWidgets, cv2, numpy, PIL, pypdf, bs4, requests, pytesseract, sqlite3, ssl; print('ok')"
+        run: dist\Digger\python\python.exe -c "import PyQt5.QtWidgets, cv2, numpy, PIL, pypdf, bs4, requests, pytesseract, sqlite3, ssl; print('ok')"
       - name: Самопроверка встроенным Python и встроенным Tesseract
         shell: cmd
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"
-          dist\ChipFinder\python\python.exe dist\ChipFinder\run.py --selftest
+          dist\Digger\python\python.exe dist\Digger\run.py --selftest
       - name: PP-OCR читает образцы - проверки ppocr_check и program_ocr (встроенный Python, onnxruntime 1.11.1)
         shell: cmd
         run: |
           set "PATH=C:\Windows\system32;C:\Windows"
-          dist\ChipFinder\python\python.exe tools\ci_ppocr.py dist\ChipFinder
+          dist\Digger\python\python.exe tools\ci_ppocr.py dist\Digger
       - name: Окно открывается из папки с русским именем и пробелом (настоящий оконный модуль Qt)
         shell: bash
         timeout-minutes: 3     # при ошибке Qt показывает окно и ждёт «OK» — шаг зависает
         run: |
           mkdir -p "dist/Мои программы"
-          cp -r dist/ChipFinder "dist/Мои программы/"
-          cd "dist/Мои программы/ChipFinder"
+          cp -r dist/Digger "dist/Мои программы/"
+          cd "dist/Мои программы/Digger"
           env -u QT_QPA_PLATFORM ./python/python.exe run.py --smoke
       - uses: actions/upload-artifact@v4
         with:
-          name: ChipFinder_portable_win7_x64
-          path: dist/ChipFinder_portable_win7_x64.zip
+          name: Digger_portable_win7_x64
+          path: dist/Digger_portable_win7_x64.zip
           compression-level: 0
       - name: Релиз
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ChipFinder_portable_win7_x64.zip
+          files: dist/Digger_portable_win7_x64.zip

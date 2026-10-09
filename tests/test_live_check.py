@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 live_check = pytest.importorskip("live_check")
 
-from chipfinder.acquire.events import Event  # noqa: E402
+from digger.acquire.events import Event  # noqa: E402
 from tests.fakes.fake_http import FakeHttp  # noqa: E402
 from tests.test_acquire_orchestrator import ALL, TI, build, pdf_at, source  # noqa: E402
 from tests.test_acquire_orchestrator import env as _env  # noqa: E402
@@ -79,5 +79,5 @@ def test_live_check_in_pack_and_build():
 
 
 def test_chips_match_trial():
-    from chipfinder.acquire import trial
+    from digger.acquire import trial
     assert live_check.CHIPS == trial.CHIPS

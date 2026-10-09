@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Проверка downloads: скачивание и проверка PDF для 12 эталонных чипов из сети работы.
 
-Для каждого чипа (`chipfinder/acquire/trial.py`): источники по уровням → лучшие ссылки → PDF скачивается в карантин
+Для каждого чипа (`digger/acquire/trial.py`): источники по уровням → лучшие ссылки → PDF скачивается в карантин
 и проверяется (шифрование, страницы, активное содержимое), страница обходится в поисках PDF. Запасные варианты
 перебираются сами: другой домен, обход страницы, пришедшей вместо PDF. В отчёт идут: downloads.md (чипы, домены,
 классы неудач), downloads.json (все попытки и ход поиска), raw/ — страницы, на которых PDF не нашёлся (фикстуры
@@ -62,9 +62,9 @@ def run(ctx):
         return {"status": "fail", "error": "нет data/sources.json"}
     try:
         import sites
-        from chipfinder.acquire import trial
-        from chipfinder.acquire.registry import Registry
-        from chipfinder.core.config import load_config
+        from digger.acquire import trial
+        from digger.acquire.registry import Registry
+        from digger.core.config import load_config
         http, net = sites.make_http(ctx.app_dir, Registry.load(path).allowed_domains(), ctx.work_dir)
         keys = load_config(ctx.app_dir).get("acquire", {}).get("api_keys", {})
         import pypdf

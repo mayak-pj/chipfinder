@@ -8,9 +8,9 @@ import socket
 import pytest
 import requests
 
-from chipfinder.acquire import netdiag
-from chipfinder.acquire.netdiag import BlockTracker, classify_exception, classify_response, failure_class
-from chipfinder.core.netsafe import HttpStatus, NetBlocked, NotPdf, SafeHttp, TooBig
+from digger.acquire import netdiag
+from digger.acquire.netdiag import BlockTracker, classify_exception, classify_response, failure_class
+from digger.core.netsafe import HttpStatus, NetBlocked, NotPdf, SafeHttp, TooBig
 from tests.fakes.fake_http import FIXTURES, FakeHttp
 
 DIR = os.path.join(FIXTURES, "netdiag")
@@ -264,10 +264,10 @@ def _http(tmp_path, fake):
 
 
 def test_fetch_and_crawl_use_tracker(tmp_path):
-    from chipfinder.acquire.crawl import crawl
-    from chipfinder.acquire.events import EventBus
-    from chipfinder.acquire.fetch import fetch_to_quarantine
-    from chipfinder.acquire.models import Lead
+    from digger.acquire.crawl import crawl
+    from digger.acquire.events import EventBus
+    from digger.acquire.fetch import fetch_to_quarantine
+    from digger.acquire.models import Lead
 
     clock = Clock()
     tr = BlockTracker(clock=clock)
@@ -289,9 +289,9 @@ def test_fetch_and_crawl_use_tracker(tmp_path):
 
 
 def test_crawl_reports_proxy_page_at_once(tmp_path):
-    from chipfinder.acquire.crawl import crawl
-    from chipfinder.acquire.events import EventBus
-    from chipfinder.acquire.models import Lead
+    from digger.acquire.crawl import crawl
+    from digger.acquire.events import EventBus
+    from digger.acquire.models import Lead
 
     page = "https://www.ti.com/page"
     fake = FakeHttp().add_fixture(page, "netdiag/proxy_squid_403.html", status=403)

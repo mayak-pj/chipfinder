@@ -5,13 +5,13 @@ import os
 
 import pytest
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import ADAPTERS, Registry
-from chipfinder.acquire.sources.base import SourceEntry
-from chipfinder.acquire.sources.catalogs.datasheet4u import Datasheet4u, download_url, hits, pdf_from_hit
-from chipfinder.acquire.sources.catalogs.partlist import DatasheetArchive, FindChips, dsa_rows, fc_details
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.events import EventBus
+from digger.acquire.query import Query
+from digger.acquire.registry import ADAPTERS, Registry
+from digger.acquire.sources.base import SourceEntry
+from digger.acquire.sources.catalogs.datasheet4u import Datasheet4u, download_url, hits, pdf_from_hit
+from digger.acquire.sources.catalogs.partlist import DatasheetArchive, FindChips, dsa_rows, fc_details
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

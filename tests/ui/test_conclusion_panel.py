@@ -13,10 +13,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test_docs_tabs import _open  # noqa: E402
 from test_photo_cards import _report  # noqa: E402
 
-from chipfinder.acquire.conclusion import Conclusion, SiteNote  # noqa: E402
-from chipfinder.acquire.site_actions import add_to_access_request, allow_domain  # noqa: E402
-from chipfinder.core.netsafe import SafeHttp  # noqa: E402
-from chipfinder.modules.report_html import HtmlReport, colors_from_tokens  # noqa: E402
+from digger.acquire.conclusion import Conclusion, SiteNote  # noqa: E402
+from digger.acquire.site_actions import add_to_access_request, allow_domain  # noqa: E402
+from digger.core.netsafe import SafeHttp  # noqa: E402
+from digger.modules.report_html import HtmlReport, colors_from_tokens  # noqa: E402
 
 
 def _conclusion():
@@ -87,8 +87,8 @@ def test_add_to_access_request():
 
 
 def test_settings_theme_choice(window):
-    from chipfinder.gui.dialogs import SettingsDialog
-    from chipfinder.ui import theme as ui_theme
+    from digger.gui.dialogs import SettingsDialog
+    from digger.ui import theme as ui_theme
     w, app = window
     d = SettingsDialog(w.ctx, w)
     assert d.theme_box.currentData() == "light"
@@ -98,7 +98,7 @@ def test_settings_theme_choice(window):
 
 
 def test_report_follows_dark_theme():
-    from chipfinder.ui.theme import tokens
+    from digger.ui.theme import tokens
     r = _report("a.png", "NE555P", "yes")
     r.conclusion = _conclusion()
     light = HtmlReport({}, None).render(r)

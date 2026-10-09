@@ -6,10 +6,10 @@ import os
 
 from pypdf import PdfWriter
 
-from chipfinder.acquire import trial
-from chipfinder.acquire.models import Lead
-from chipfinder.acquire.sources.base import SourceAdapter, SourceError
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire import trial
+from digger.acquire.models import Lead
+from digger.acquire.sources.base import SourceAdapter, SourceError
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 

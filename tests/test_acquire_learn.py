@@ -6,13 +6,13 @@ import os
 
 import pytest
 
-from chipfinder.acquire import manual as M
-from chipfinder.acquire.learn import Learner, domain_of
-from chipfinder.acquire.models import PhotoContext
-from chipfinder.acquire.store import AcquireStore
-from chipfinder.acquire.verify import SourceTrust
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire import manual as M
+from digger.acquire.learn import Learner, domain_of
+from digger.acquire.models import PhotoContext
+from digger.acquire.store import AcquireStore
+from digger.acquire.verify import SourceTrust
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 from tests.fixtures import make_pdfs
 
 TRUST = SourceTrust(makers=("ti.com",), catalogs=("alldatasheet.com",))
@@ -20,7 +20,7 @@ TRUST = SourceTrust(makers=("ti.com",), catalogs=("alldatasheet.com",))
 
 @pytest.fixture()
 def env(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     store = AcquireStore(db)
     return store, Learner(store, clock=lambda: 1_800_000_000.0), tmp_path

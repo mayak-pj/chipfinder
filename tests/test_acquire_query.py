@@ -2,7 +2,7 @@
 """План запросов на трёх языках (шаг 1.3, ARCHITECTURE §4.7)."""
 import pytest
 
-from chipfinder.acquire.query import Query, base_part, family, is_smd_code, mentions, plan_queries, relevance_keys
+from digger.acquire.query import Query, base_part, family, is_smd_code, mentions, plan_queries, relevance_keys
 
 
 @pytest.mark.parametrize("raw, base", [

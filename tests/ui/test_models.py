@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("PyQt5")
 
-from chipfinder.core.models import ChipReport, DatasheetHit  # noqa: E402
+from digger.core.models import ChipReport, DatasheetHit  # noqa: E402
 from test_latency import MAX_LATE_MS, _Lateness, _pump  # noqa: E402
 
 PHOTOS = 500
@@ -40,7 +40,7 @@ def photo_dir(tmp_path):
 # -------------------- без окна --------------------
 
 def test_scan_images_folders_files_and_unreachable(photo_dir, tmp_path):
-    from chipfinder.gui.models import scan_images
+    from digger.gui.models import scan_images
     single = _png(str(tmp_path / u"один.PNG"))
     found, errors = scan_images([photo_dir, single, os.path.join(photo_dir, u"заметки.txt"),
                                  str(tmp_path / u"нет такой папки" / "x.png")])
@@ -51,7 +51,7 @@ def test_scan_images_folders_files_and_unreachable(photo_dir, tmp_path):
 
 
 def test_load_qimage_scales_down_and_survives_bad_files(photo_dir, tmp_path):
-    from chipfinder.gui.models import load_qimage
+    from digger.gui.models import load_qimage
     img = load_qimage(os.path.join(photo_dir, "chip_000.png"), 32, 32)
     assert (img.width(), img.height()) == (32, 24)
     assert load_qimage(os.path.join(photo_dir, u"заметки.txt"), 32, 32) is None
@@ -61,7 +61,7 @@ def test_load_qimage_scales_down_and_survives_bad_files(photo_dir, tmp_path):
 def test_photo_model(qapp):
     from PyQt5.QtCore import Qt
     from PyQt5.QtGui import QImage
-    from chipfinder.gui.models import PhotoListModel
+    from digger.gui.models import PhotoListModel
     m = PhotoListModel()
     inserted, changed = [], []
     m.rowsInserted.connect(lambda _p, a, b: inserted.append((a, b)))
@@ -87,7 +87,7 @@ def test_photo_model(qapp):
 def test_hits_model(qapp):
     from PyQt5.QtCore import Qt
     from PyQt5.QtGui import QColor
-    from chipfinder.gui.models import HitsModel
+    from digger.gui.models import HitsModel
     m = HitsModel({"current": QColor("#aaccff"), "blocked": QColor("#999999")})
     resets = []
     m.modelReset.connect(lambda: resets.append(1))

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Отпечаток текста и поиск дублей (шаг 4.4)."""
 
-from chipfinder.acquire.extract import DocText, extract_facts, facts_from_text
-from chipfinder.acquire.fingerprint import (
+from digger.acquire.extract import DocText, extract_facts, facts_from_text
+from digger.acquire.fingerprint import (
     find_similar, group_duplicates, is_duplicate, similarity, simhash)
 from tests.fixtures import make_pdfs
 

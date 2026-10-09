@@ -1,4 +1,4 @@
-# ChipFinder — план по шагам
+# Digger — план по шагам
 
 ## Как работать
 Одна сессия Claude Code = один шаг. Промт каждый раз один и тот же:
@@ -51,7 +51,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 - [x] `Sonnet` **0.1 Git и GitHub.** Цель: `git init`, `.gitignore` (venv, .venv, wheels, data/library, data/quarantine,
   *.sqlite, logs, reports/*.html, config.json, *.part*, *.zip, __pycache__, .DS_Store, **my_test/, my_reports/**),
   первый коммит текущего кода v1 (проверить `git status`, что my_test и my_reports не попали),
-  приватный репозиторий `chipfinder` через `gh repo create --private` с удалённым адресом по SSH
+  приватный репозиторий `digger` через `gh repo create --private` с удалённым адресом по SSH
   (`git@github.com:…`), push. Сначала проверить: `gh auth status`, `ssh -T git@github.com`,
   `git config user.name` / `user.email`; чего не хватает — попросить пользователя (для `gh auth login` выбрать
   протокол SSH и существующий ключ). Файлы: `.gitignore`, `docs/PROGRESS.md`.
@@ -64,7 +64,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   (фикстура `ctx` во временной папке в `tests/conftest.py`), метки `live` и `needs_tesseract`.
   `requirements-dev.txt`: pytest 8.3.x, pytest-qt, ruff, vermin, reportlab. Метка `mytest` — тесты на файлах из
   `my_test/` (пропускаются, если папки нет; в CI её нет). `pyproject.toml`: ruff target py38, маркеры.
-  Готово, когда: `pytest -q -m "not live"`, `ruff check .`, `vermin --target=3.8- chipfinder` зелёные.
+  Готово, когда: `pytest -q -m "not live"`, `ruff check .`, `vermin --target=3.8- digger` зелёные.
 - [x] `Sonnet` **0.4 CI.** `.github/workflows/ci.yml` — windows-2022 (Python 3.8, Tesseract через choco; если не ставится —
   `needs_tesseract` пропускаются) и macos-14 (arm64). pytest, ruff, vermin. Готово, когда: зелёные галочки.
 - [x] `Sonnet` **0.5 Подмена сети и фикстуры.** `tests/fakes/fake_http.py` (URL → фикстура/код/редирект/исключение),
@@ -72,9 +72,9 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
   SafeHttp, вырезает скрипты/стили, пишет `tests/fixtures/sources/<adapter>/<name>.html` + `meta.json`).
   Тесты: редирект на чужой домен блокируется; запись фикстуры из локального файла.
 - [x] `Opus` **0.6 ★ Портативная сборка для Win7 (без прав администратора).** CI (windows-2022) собирает
-  `ChipFinder_portable_win7_x64.zip`: embeddable Python 3.8.10 x64 + пакеты из `requirements.txt` + распакованный
+  `Digger_portable_win7_x64.zip`: embeddable Python 3.8.10 x64 + пакеты из `requirements.txt` + распакованный
   Tesseract с `tessdata/eng` (подобрать сборку, которая запускается на Win7; записать версию в «Решения») +
-  программа + `ChipFinder.bat` + `Самопроверка.bat`. Программа находит Tesseract в своей папке. Пишет только в
+  программа + `Digger.bat` + `Самопроверка.bat`. Программа находит Tesseract в своей папке. Пишет только в
   свою папку. Архив — артефакт CI и релиз GitHub по тегу `v*`. `tools/build_portable.py` (можно запустить и
   на Mac — для проверки состава). Проверка на Win7: скачать архив с GitHub, распаковать в свою папку,
   запустить самопроверку и окно, результат — в `my_reports/`.
@@ -272,7 +272,7 @@ Claude Code сам берёт первый шаг с `[ ]`, пишет тест�
 Каждый шаг этой фазы: скриншоты светлой (и, когда появится, тёмной) темы через `tools/screenshots.py` в
 `my_reports/screens/`, Claude Code просматривает их сам; окно проверяется запуском на Mac.
 - [x] `Opus` **7.1 API расширений** (ARCHITECTURE §6): `extensions/api.py` (сервисы, вклады в интерфейс, события,
-  таблицы с префиксом, миграции), загрузчик из `chipfinder/extensions/` и `plugins/`, изоляция ошибок, окно
+  таблицы с префиксом, миграции), загрузчик из `digger/extensions/` и `plugins/`, изоляция ошибок, окно
   «Расширения». Тесты: пример расширения добавляет вкладку и пункт меню; падающее расширение отключается.
 - [x] `Opus` **7.1a Провайдеры распознавания — остальное** (ARCHITECTURE §6.1; интерфейс, менеджер и провайдеры
   PP-OCR/Tesseract сделаны в 0.8 — если 0.8 отменён, сделать здесь и их, с Tesseract по умолчанию): полный перенос

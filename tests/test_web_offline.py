@@ -2,7 +2,7 @@
 """Правила безопасности: белый список и проверка PDF (без сети)."""
 import pytest
 
-from chipfinder.core.netsafe import pdf_danger_scan
+from digger.core.netsafe import pdf_danger_scan
 
 
 @pytest.fixture()

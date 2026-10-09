@@ -11,9 +11,9 @@ for p in (APP, HERE):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from chipfinder.core.config import load_config, setup_logging  # noqa: E402
-from chipfinder.core.interfaces import Context  # noqa: E402
-from chipfinder.core.registry import load_modules  # noqa: E402
+from digger.core.config import load_config, setup_logging  # noqa: E402
+from digger.core.interfaces import Context  # noqa: E402
+from digger.core.registry import load_modules  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -48,7 +48,7 @@ def ctx(tmp_path):
 
 
 def pytest_collection_modifyitems(config, items):
-    from chipfinder.recognition.providers.tesseract import find_tesseract
+    from digger.recognition.providers.tesseract import find_tesseract
     if shutil.which("tesseract") or find_tesseract(APP):
         return
     skip = pytest.mark.skip(reason="Tesseract не установлен")

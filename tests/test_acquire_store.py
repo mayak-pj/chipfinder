@@ -7,18 +7,18 @@ import sqlite3
 
 import pytest
 
-from chipfinder import __version__
-from chipfinder.acquire.models import AcquisitionRecord, DocFacts, Evidence, FetchResult, Lead, Verdict
-from chipfinder.acquire.store import AcquireStore
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger import __version__
+from digger.acquire.models import AcquisitionRecord, DocFacts, Evidence, FetchResult, Lead, Verdict
+from digger.acquire.store import AcquireStore
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 PDF = b"%PDF-1.4\n" + b"NE555 datasheet body\n" * 20 + b"%%EOF\n"
 PDF2 = PDF + b"% other\n"
 
 
 def make_db(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     return SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
 
 
@@ -130,7 +130,7 @@ def test_migration_keeps_old_index(tmp_path):
     db.conn.commit()
     db.close()
     # старая база без таблиц шага 5.2 (user_version 0) открывается без потерь
-    con = sqlite3.connect(str(tmp_path / "data" / "chipfinder.sqlite"))
+    con = sqlite3.connect(str(tmp_path / "data" / "digger.sqlite"))
     con.executescript("DROP TABLE IF EXISTS acquisitions; DROP TABLE IF EXISTS attempts; PRAGMA user_version=0;")
     con.commit()
     con.close()

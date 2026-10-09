@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from chipfinder.core.pipeline import ChipPipeline
+from digger.core.pipeline import ChipPipeline
 
 EXPECT = {
     "at24c02.png": ("24C02", True),

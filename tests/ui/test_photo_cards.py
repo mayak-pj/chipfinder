@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("PyQt5")
 
-from chipfinder.core.models import ChipReport, MemoryVerdict  # noqa: E402
+from digger.core.models import ChipReport, MemoryVerdict  # noqa: E402
 from test_latency import _pump  # noqa: E402
 from test_models import _png  # noqa: E402
 
@@ -34,7 +34,7 @@ def _near(image, color, tolerance=40):
 
 def test_photo_status_in_model(qapp):
     from PyQt5.QtCore import Qt
-    from chipfinder.gui.models import NAME_ROLE, PART_ROLE, PHOTO_STATES, STATE_ROLE, PhotoListModel
+    from digger.gui.models import NAME_ROLE, PART_ROLE, PHOTO_STATES, STATE_ROLE, PhotoListModel
     m = PhotoListModel()
     a, b = os.path.join("d", "a.png"), os.path.join("d", "b.png")
     m.add([a, b])
@@ -58,15 +58,15 @@ def test_photo_status_in_model(qapp):
     m.remove([a])
     assert m.add([a]) == [a] and m.status(a) == ("new", "")  # убрали и добавили снова — как новое
     for title, color in PHOTO_STATES.values():               # у каждой метки есть цвет из токенов темы
-        assert color in __import__("chipfinder.ui.theme.tokens", fromlist=["LIGHT"]).LIGHT
+        assert color in __import__("digger.ui.theme.tokens", fromlist=["LIGHT"]).LIGHT
 
 
 def test_cards_are_painted(qapp, tmp_path):
     from PyQt5.QtCore import QItemSelectionModel, QPoint
     from PyQt5.QtGui import QImage, QPixmap, QRegion
-    from chipfinder.gui.models import PhotoListModel
-    from chipfinder.gui.photo_list import CARD_HEIGHT, PhotoList
-    from chipfinder.ui import theme as ui_theme
+    from digger.gui.models import PhotoListModel
+    from digger.gui.photo_list import CARD_HEIGHT, PhotoList
+    from digger.ui import theme as ui_theme
     theme = ui_theme.apply_theme(qapp, "light", str(tmp_path / "theme"))
     try:
         m = PhotoListModel(theme.icon("cpu", "text_disabled", 72))

@@ -2,10 +2,10 @@
 """Статистика поиска (шаг 5.4, ARCHITECTURE §4.10): запись по событиям, показатели источников. Время сдвигается."""
 import logging
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.stats import SearchStats, StatsRecorder
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.events import EventBus
+from digger.acquire.stats import SearchStats, StatsRecorder
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 
 class Clock:
@@ -17,7 +17,7 @@ class Clock:
 
 
 def make(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     clock = Clock()
     stats = SearchStats(db, clock=clock)

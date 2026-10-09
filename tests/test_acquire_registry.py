@@ -5,13 +5,13 @@ import os
 
 import pytest
 
-from chipfinder.acquire.events import LANGS, EventBus, render
-from chipfinder.acquire.models import Lead
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import Registry, legacy_sources
-from chipfinder.acquire.sources.base import SourceAdapter, SourceEntry
-from chipfinder.core.config import read_json
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.events import LANGS, EventBus, render
+from digger.acquire.models import Lead
+from digger.acquire.query import Query
+from digger.acquire.registry import Registry, legacy_sources
+from digger.acquire.sources.base import SourceAdapter, SourceEntry
+from digger.core.config import read_json
+from digger.core.netsafe import SafeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCES = os.path.join(APP, "data", "sources.json")

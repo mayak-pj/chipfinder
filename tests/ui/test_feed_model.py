@@ -10,7 +10,7 @@ import pytest
 
 pytest.importorskip("PyQt5")
 
-from chipfinder.acquire.events import Event, EventCounters  # noqa: E402
+from digger.acquire.events import Event, EventCounters  # noqa: E402
 
 APP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 Q_EN, Q_ZH = "W25Q64JV datasheet pdf", u"W25Q64JV 数据手册"
@@ -44,12 +44,12 @@ def _search():
 
 
 def _model(qapp):
-    from chipfinder.gui.feed_model import FeedModel
+    from digger.gui.feed_model import FeedModel
     return FeedModel()
 
 
 def _rows(m):
-    from chipfinder.gui.feed_model import KIND_ROLE
+    from digger.gui.feed_model import KIND_ROLE
     return [(m.index(i).data(KIND_ROLE), m.index(i).data()) for i in range(m.rowCount())]
 
 
@@ -87,7 +87,7 @@ def test_console_observer_uses_the_same_counters():
 # -------------------- история по уровням --------------------
 
 def test_history_is_grouped_by_levels(qapp):
-    from chipfinder.gui.feed_model import COUNT_ROLE, KIND_ROLE
+    from digger.gui.feed_model import COUNT_ROLE, KIND_ROLE
     m = _model(qapp)
     m.set_level_names({"catalog": u"1. Сайты-каталоги datasheet", "search": u"Поисковики (английский)",
                        "china": u"3. Китайский интернет"})
@@ -106,7 +106,7 @@ def test_history_is_grouped_by_levels(qapp):
 
 
 def test_pending_row_is_replaced_by_its_result(qapp):
-    from chipfinder.gui.feed_model import STATE_ROLE
+    from digger.gui.feed_model import STATE_ROLE
     m = _model(qapp)
     events = _search()
     m.add(events[:1])
@@ -131,7 +131,7 @@ def test_pending_row_is_replaced_by_its_result(qapp):
 
 
 def test_row_text_time_icon_language_and_russian_tooltip(qapp):
-    from chipfinder.gui.feed_model import LANG_ROLE, STATE_ROLE, STATES, TEXT_ROLE, TIME_ROLE
+    from digger.gui.feed_model import LANG_ROLE, STATE_ROLE, STATES, TEXT_ROLE, TIME_ROLE
     m = _model(qapp)
     m.add(_search())
     by_text = {m.index(i).data(TEXT_ROLE): m.index(i) for i in range(m.rowCount()) if m.index(i).data(TEXT_ROLE)}
@@ -151,8 +151,8 @@ def test_row_text_time_icon_language_and_russian_tooltip(qapp):
 
 
 def test_recognition_plan_finish_clear_and_limit(qapp):
-    from chipfinder.gui import feed_model
-    from chipfinder.gui.feed_model import STATE_ROLE
+    from digger.gui import feed_model
+    from digger.gui.feed_model import STATE_ROLE
     m = _model(qapp)
     m.add([_ev("ocr.start", "ru", provider="Tesseract"), _ev("ocr.ok", "ru", provider="Tesseract", conf=91),
            _ev("photo.recognized", "ru", part="W25Q64JV", path="a.png"),
@@ -176,7 +176,7 @@ def test_recognition_plan_finish_clear_and_limit(qapp):
 
 
 def test_level_names_from_sources_file(tmp_path):
-    from chipfinder.gui.feed_model import level_names
+    from digger.gui.feed_model import level_names
     names = level_names(os.path.join(APP, "data", "sources.json"))
     assert names["catalog"] == u"Сайты-каталоги datasheet" and names["search"] == u"Поисковики (английский)"
     bad = tmp_path / "sources.json"

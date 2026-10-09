@@ -2,10 +2,10 @@
 """Обход страниц (шаг 3.3): a/iframe/embed/object → PDF, глубина ≤ 2, только белый список."""
 import logging
 
-from chipfinder.acquire.crawl import crawl, page_links
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.models import Lead
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.crawl import crawl, page_links
+from digger.acquire.events import EventBus
+from digger.acquire.models import Lead
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 PAGE = "https://www.chipdip.ru/product/ne555"

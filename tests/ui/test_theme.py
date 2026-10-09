@@ -9,8 +9,8 @@ import sys
 
 import pytest
 
-from chipfinder.ui.theme import fonts, icons, tokens
-from chipfinder.ui.theme.qss import TEMPLATE, build_qss
+from digger.ui.theme import fonts, icons, tokens
+from digger.ui.theme.qss import TEMPLATE, build_qss
 
 APP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 IMAGES = {"chevron_down": "/tmp/d.svg", "chevron_up": "/tmp/u.svg"}
@@ -62,7 +62,7 @@ def test_icon_set_and_license():
 def test_icons_used_in_code_exist():
     """Все иконки, которые называет код программы и инструменты, есть в наборе."""
     used = set()
-    for root in ("chipfinder", "plugins", "tools"):
+    for root in ("digger", "plugins", "tools"):
         for d, _dirs, files in os.walk(os.path.join(APP, root)):
             for fn in files:
                 if fn.endswith(".py"):
@@ -91,7 +91,7 @@ def _colors(pm):
 
 
 def test_every_icon_renders_in_theme_color(app):
-    from chipfinder.ui.theme import Theme
+    from digger.ui.theme import Theme
     theme = Theme("light")
     for n in icons.names():
         pm = icons.pixmap(n, "#ff0000", 20, scale=1.0)
@@ -105,7 +105,7 @@ def test_every_icon_renders_in_theme_color(app):
 def test_theme_is_applied(app, tmp_path):
     from PyQt5.QtGui import QPalette
     from PyQt5.QtWidgets import QComboBox, QPushButton
-    from chipfinder.ui import theme as th
+    from digger.ui import theme as th
     cache = tmp_path / u"папка темы"
     theme = th.apply_theme(app, "light", str(cache))
     assert th.current() is theme and theme.name == "light"
@@ -134,8 +134,8 @@ def test_window_uses_theme(app, tmp_path, monkeypatch):
     shutil.copy(os.path.join(APP, "data", "sources.json"), str(app_dir / "data"))
     for name in ("warning", "critical", "information"):
         monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: 0))
-    from chipfinder.gui.main_window import MainWindow
-    from chipfinder.ui import theme as th
+    from digger.gui.main_window import MainWindow
+    from digger.ui import theme as th
     w = MainWindow(str(app_dir))
     try:
         assert w.theme is th.current() and w.theme.name == "light"

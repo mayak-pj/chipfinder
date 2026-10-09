@@ -2,19 +2,19 @@
   "_readme": "Настройки по умолчанию. НЕ редактируйте этот файл — свои изменения пишите в config.json (его создаёт окно «Настройки»). Там достаточно указать только изменённые параметры.",
 
   "modules": {
-    "enhancer":   "chipfinder.modules.enhance_opencv:OpenCVEnhancer",
-    "ocr":        "chipfinder.recognition.manager:RecognitionManager",
-    "identifier": "chipfinder.modules.identify_rules:RuleIdentifier",
-    "local_db":   "chipfinder.modules.localdb_sqlite:SQLiteLocalDB",
-    "web_search": "chipfinder.acquire.websearch:AcquireWebSearch",
-    "pdf_text":   "chipfinder.modules.pdftext_pypdf:PyPdfText",
-    "comparator": "chipfinder.modules.compare_basic:BasicComparator",
-    "memory":     "chipfinder.modules.memory_rules:RuleMemoryAnalyzer",
-    "report":     "chipfinder.modules.report_html:HtmlReport"
+    "enhancer":   "digger.modules.enhance_opencv:OpenCVEnhancer",
+    "ocr":        "digger.recognition.manager:RecognitionManager",
+    "identifier": "digger.modules.identify_rules:RuleIdentifier",
+    "local_db":   "digger.modules.localdb_sqlite:SQLiteLocalDB",
+    "web_search": "digger.acquire.websearch:AcquireWebSearch",
+    "pdf_text":   "digger.modules.pdftext_pypdf:PyPdfText",
+    "comparator": "digger.modules.compare_basic:BasicComparator",
+    "memory":     "digger.modules.memory_rules:RuleMemoryAnalyzer",
+    "report":     "digger.modules.report_html:HtmlReport"
   },
 
   "paths": {
-    "db": "data/chipfinder.sqlite",
+    "db": "data/digger.sqlite",
     "library_dir": "data/library",
     "quarantine_dir": "data/quarantine",
     "log_dir": "logs",

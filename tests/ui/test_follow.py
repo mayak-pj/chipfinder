@@ -140,7 +140,7 @@ def test_user_stops_following_and_returns(window, tmp_path, monkeypatch):
 
 
 def test_follow_switched_off_in_settings(window, tmp_path, monkeypatch):
-    from chipfinder.gui.dialogs import SettingsDialog
+    from digger.gui.dialogs import SettingsDialog
     w, app = window
     cfg_path = os.path.join(w.app_dir, "config.json")
     assert w.ctx.config["ui"]["follow_recognition"] is True              # по умолчанию включено

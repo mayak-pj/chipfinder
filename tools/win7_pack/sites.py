@@ -36,7 +36,7 @@ NETWORK_BLOCK_MARKERS = ["web filter", "webfilter", "forcepoint", "fortiguard", 
 
 def _v1(sources):
     """sources.json схемы 2 → прежний вид (engines + levels); программа уже в sys.path."""
-    from chipfinder.acquire.registry import legacy_sources
+    from digger.acquire.registry import legacy_sources
     return legacy_sources(sources)
 
 
@@ -169,8 +169,8 @@ def probe_url(http, url, deadline=None):
 
 
 def make_http(app_dir, hosts, work_dir):
-    from chipfinder.core.config import load_config, setup_logging
-    from chipfinder.core.netsafe import SafeHttp
+    from digger.core.config import load_config, setup_logging
+    from digger.core.netsafe import SafeHttp
     cfg = load_config(app_dir)
     net = dict(cfg.get("network", {}))
     net["allowed_domains"] = sorted(set(list(net.get("allowed_domains", [])) + list(hosts)))

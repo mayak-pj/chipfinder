@@ -2,7 +2,7 @@
 """Проверка adapters: тестовый запрос (NE555) к каждому адаптеру из data/sources.json.
 
 Итог по источнику: ok / empty / captcha / offtopic / no_key / quota / error / parse_error / no_adapter / disabled
-(`chipfinder/acquire/diagnose.py`). Для источников с ошибкой дополнительно открывается главная страница домена
+(`digger/acquire/diagnose.py`). Для источников с ошибкой дополнительно открывается главная страница домена
 (sites.probe_url) — видно, закрыт сайт или сломан разбор. Сырые ответы неудачных источников сохраняются в
 adapters/raw/ — из них делаются фикстуры (шаг 3.4). Список закрытых доменов для администраторов — в adapters/
 для_администраторов.txt. Обращения — только через SafeHttp.
@@ -38,9 +38,9 @@ def run(ctx):
         return {"status": "fail", "error": "нет data/sources.json"}
     try:
         import sites
-        from chipfinder.acquire import diagnose
-        from chipfinder.acquire.registry import Registry
-        from chipfinder.core.config import load_config
+        from digger.acquire import diagnose
+        from digger.acquire.registry import Registry
+        from digger.core.config import load_config
         reg = Registry.load(path)
         hosts = reg.allowed_domains()
         http, net = sites.make_http(ctx.app_dir, hosts, ctx.work_dir)
@@ -74,7 +74,7 @@ def run(ctx):
                   f, ensure_ascii=False, indent=2)
     blocked = diagnose.admin_domains(rows)
     with open(os.path.join(ctx.work_dir, "для_администраторов.txt"), "w", encoding="utf-8") as f:
-        f.write("Запрос на доступ для программы ChipFinder (поиск технической документации на микросхемы)\n"
+        f.write("Запрос на доступ для программы Digger (поиск технической документации на микросхемы)\n"
                 "Только чтение страниц поиска и скачивание PDF по HTTPS (порт 443).\n\n"
                 "Не отвечают (%d):\n" % len(blocked))
         f.writelines("  %s\n" % d for d in blocked)

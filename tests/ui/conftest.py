@@ -28,7 +28,7 @@ def window(qapp, tmp_path, monkeypatch):
     shutil.copy(os.path.join(APP, "data", "sources.json"), str(app_dir / "data"))
     for name in ("warning", "critical", "information"):
         monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: 0))
-    from chipfinder.gui.main_window import MainWindow
+    from digger.gui.main_window import MainWindow
     w = MainWindow(str(app_dir))
     yield w, qapp
     w.close()

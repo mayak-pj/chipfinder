@@ -8,8 +8,8 @@ import threading
 
 import pytest
 
-from chipfinder.acquire import events
-from chipfinder.acquire.events import (
+from digger.acquire import events
+from digger.acquire.events import (
     Event, EventBus, LANGS, en_plural, load_catalog, render, ru_plural, search_language,
 )
 

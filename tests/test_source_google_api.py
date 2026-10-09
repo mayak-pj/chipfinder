@@ -4,12 +4,12 @@ import json
 import logging
 import os
 
-from chipfinder.acquire.events import KEYS, LANGS, EventBus, render
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import ADAPTERS, Registry
-from chipfinder.acquire.sources.base import SourceEntry
-from chipfinder.acquire.sources.google_api import GoogleApi
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.events import KEYS, LANGS, EventBus, render
+from digger.acquire.query import Query
+from digger.acquire.registry import ADAPTERS, Registry
+from digger.acquire.sources.base import SourceEntry
+from digger.acquire.sources.google_api import GoogleApi
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,7 +88,7 @@ def test_bad_json_and_network_error(tmp_path):
 def test_key_not_in_event_text_or_audit_log(tmp_path, caplog):
     ad, http, fake, events = make(tmp_path)
     fake.add(URL, "{}", content_type="application/json")
-    with caplog.at_level(logging.INFO, logger="chipfinder.net"):
+    with caplog.at_level(logging.INFO, logger="digger.net"):
         ad.search("STM32F103C8 datasheet pdf", http)
     assert "googleapis.com" in caplog.text and "AIza-test" not in caplog.text
     for e in events:

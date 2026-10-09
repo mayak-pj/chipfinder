@@ -5,11 +5,11 @@ import os
 
 import pytest
 
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import Registry
-from chipfinder.acquire.sources.engine_html import EngineHtml, REST_MINUTES
-from chipfinder.acquire.events import EventBus
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.query import Query
+from digger.acquire.registry import Registry
+from digger.acquire.sources.engine_html import EngineHtml, REST_MINUTES
+from digger.acquire.events import EventBus
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools", "win7_pack"))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 
 sites = pytest.importorskip("sites", reason="нет tools/win7_pack (портативная сборка)")
-from chipfinder.core.netsafe import SafeHttp  # noqa: E402
+from digger.core.netsafe import SafeHttp  # noqa: E402
 from fakes.fake_http import FakeHttp  # noqa: E402
 
 SRC = json.load(open(os.path.join(ROOT, "data", "sources.json"), encoding="utf-8"))
@@ -76,7 +76,7 @@ def test_run_end_to_end_with_fake(tmp_path, monkeypatch):
         cfg = dict(cfg, min_interval_sec=0)
         return real(cfg, q, log, transport=fake)
 
-    monkeypatch.setattr("chipfinder.core.netsafe.SafeHttp", factory)
+    monkeypatch.setattr("digger.core.netsafe.SafeHttp", factory)
     from run_checks import Context
     ctx = Context(ROOT, str(tmp_path), "sites")
     res = sites.run(ctx)

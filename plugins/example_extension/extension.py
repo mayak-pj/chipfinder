@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """ПРИМЕР расширения. Скопируйте папку под другим именем, поменяйте id в extension.json — и пишите своё.
 
-Включается в окне «Расширения». Всё, что доступно расширению, описано в chipfinder/extensions/api.py.
+Включается в окне «Расширения». Всё, что доступно расширению, описано в digger/extensions/api.py.
 """
-from chipfinder.extensions.api import Extension as BaseExtension
+from digger.extensions.api import Extension as BaseExtension
 
 
 class Extension(BaseExtension):

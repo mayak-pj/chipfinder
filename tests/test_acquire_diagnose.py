@@ -5,8 +5,8 @@ import logging
 import os
 import sys
 
-from chipfinder.acquire import diagnose
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire import diagnose
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,7 +112,7 @@ def test_adapters_dialog_offscreen(tmp_path):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     pytest.importorskip("PyQt5")
     from PyQt5.QtWidgets import QApplication
-    from chipfinder.gui.dialogs import ADAPTER_STATUS, AdaptersDialog
+    from digger.gui.dialogs import ADAPTER_STATUS, AdaptersDialog
     assert set(diagnose.STATUSES) <= set(ADAPTER_STATUS)
     app = QApplication.instance() or QApplication([])
     rows, _ = run(tmp_path)

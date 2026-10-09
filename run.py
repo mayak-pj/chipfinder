@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Запуск ChipFinder: python run.py [фото ...]"""
+"""Запуск Digger: python run.py [фото ...]"""
 import os
 import sys
 
@@ -22,7 +22,7 @@ def main():
         import pytest
         extra = sys.argv[sys.argv.index("--selftest") + 1:]     # например -vv --deselect=… (проверка selftest)
         return int(pytest.main(["-q", "-m", "not live"] + extra + [os.path.join(d, "tests")]))
-    from chipfinder.gui.main_window import main as gui_main
+    from digger.gui.main_window import main as gui_main
     return gui_main(d)
 
 

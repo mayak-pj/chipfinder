@@ -8,13 +8,13 @@ import pytest
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 
-from chipfinder.acquire import manual as M
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.models import PhotoContext
-from chipfinder.acquire.store import AcquireStore
-from chipfinder.acquire.verify import SourceTrust
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire import manual as M
+from digger.acquire.events import EventBus
+from digger.acquire.models import PhotoContext
+from digger.acquire.store import AcquireStore
+from digger.acquire.verify import SourceTrust
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 from tests.fixtures import make_pdfs
 
 TRUST = SourceTrust(makers=("ti.com",), catalogs=("alldatasheet.com",))
@@ -22,7 +22,7 @@ TRUST = SourceTrust(makers=("ti.com",), catalogs=("alldatasheet.com",))
 
 @pytest.fixture()
 def env(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     mine = tmp_path / "Загрузки мои"
     mine.mkdir()

@@ -3,12 +3,12 @@
 import logging
 import os
 
-from chipfinder.acquire.events import KEYS, EventBus
-from chipfinder.acquire.query import Query
-from chipfinder.acquire.registry import ADAPTERS, Registry
-from chipfinder.acquire.sources.base import SourceEntry
-from chipfinder.acquire.sources.engine_html import EngineHtml, ddg_target
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.events import KEYS, EventBus
+from digger.acquire.query import Query
+from digger.acquire.registry import ADAPTERS, Registry
+from digger.acquire.sources.base import SourceEntry
+from digger.acquire.sources.engine_html import EngineHtml, ddg_target
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

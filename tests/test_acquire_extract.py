@@ -4,8 +4,8 @@ import os
 
 import pytest
 
-from chipfinder.acquire.extract import DocText, covers, extract_facts, facts_from_text, read_document
-from chipfinder.acquire.models import DocFacts
+from digger.acquire.extract import DocText, covers, extract_facts, facts_from_text, read_document
+from digger.acquire.models import DocFacts
 from tests.fixtures import make_pdfs
 
 

@@ -4,14 +4,14 @@ import csv
 import io
 import logging
 
-from chipfinder.acquire.access import AccessLog, BLOCKED, OPEN
-from chipfinder.acquire.cache import DAY
-from chipfinder.core.interfaces import Context
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.access import AccessLog, BLOCKED, OPEN
+from digger.acquire.cache import DAY
+from digger.core.interfaces import Context
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 
 def make(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     db = SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t")))
     t = [1_800_000_000.0]
     return AccessLog(db, clock=lambda: t[0]), t
@@ -69,10 +69,10 @@ def test_export_txt_and_csv(tmp_path):
     log.record_failure("a.com", "network_blocked", part="LM358")
     log.record_failure("b.com", "network_blocked", part="W25Q64")
     log.record_ok("b.com")
-    txt = log.export_txt(log_hint="logs/chipfinder.log")
+    txt = log.export_txt(log_hint="logs/digger.log")
     assert "a.com" in txt and "443" in txt and "NE555" in txt and "LM358" in txt
     assert "b.com" not in txt                                  # доступ открыт — в запрос не входит
-    assert "только чтение" in txt and "logs/chipfinder.log" in txt
+    assert "только чтение" in txt and "logs/digger.log" in txt
     rows = list(csv.DictReader(io.StringIO(log.export_csv())))
     assert len(rows) == 1 and rows[0]["domain"] == "a.com" and rows[0]["port"] == "443"
     assert rows[0]["attempts"] == "2" and rows[0]["parts"] == "LM358; NE555"

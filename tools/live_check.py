@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from chipfinder.acquire.events import Event, EventBus, render  # noqa: E402
+from digger.acquire.events import Event, EventBus, render  # noqa: E402
 
 CHIPS = ("NE555", "LM358", "AT24C02", "W25Q64JV", "STM32F103C8T6", "GD32F103C8T6", "CH340G", "AMS1117", "ESP8266EX",
          "PMS150C", "STC89C52RC", "74HC595")
@@ -122,10 +122,10 @@ def md(rows: List[Dict[str, Any]], photos: List[Dict[str, Any]], note: str, sour
 
 def make_orchestrator(app_dir: str, work_dir: str, http: Any = None):
     """Оркестратор по настройкам программы, но с библиотекой, базой и карантином в work_dir."""
-    from chipfinder.acquire.orchestrator import from_context
-    from chipfinder.core.config import load_config, setup_logging
-    from chipfinder.core.interfaces import Context
-    from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+    from digger.acquire.orchestrator import from_context
+    from digger.core.config import load_config, setup_logging
+    from digger.core.interfaces import Context
+    from digger.modules.localdb_sqlite import SQLiteLocalDB
     cfg = load_config(app_dir)
     paths = dict(cfg.get("paths", {}))
     paths.update(db=os.path.join(work_dir, "live.sqlite"), library_dir=os.path.join(work_dir, "library"),
@@ -139,7 +139,7 @@ def make_orchestrator(app_dir: str, work_dir: str, http: Any = None):
 
 def run_chips(orch: Any, bus: EventBus, parts: Sequence[str], deadline: float = 0.0,
               say: Callable[[str], Any] = print) -> List[Dict[str, Any]]:
-    from chipfinder.acquire.models import PhotoContext
+    from digger.acquire.models import PhotoContext
     ids = [en.id for en in orch.registry.entries(include_disabled=True)]
     rows = []
     for part in parts:
@@ -178,7 +178,7 @@ def find_images(folder: str) -> List[str]:
 def run_photos(app_dir: str, orch: Any, photos: Sequence[str], deadline: float = 0.0,
                say: Callable[[str], Any] = print, limit: int = 10) -> List[Dict[str, Any]]:
     """Фото → ChipPipeline.analyze_image → search_web (через оркестратор) → партномер, документ, заключение."""
-    from chipfinder.core.pipeline import ChipPipeline, create_context
+    from digger.core.pipeline import ChipPipeline, create_context
     rows = []
     if not photos:
         return rows
@@ -250,7 +250,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             sys.stdout.reconfigure(errors="replace")
         except (ValueError, OSError):
             pass
-    logging.getLogger("chipfinder").setLevel(logging.WARNING)
+    logging.getLogger("digger").setLevel(logging.WARNING)
     os.makedirs(args.out, exist_ok=True)
     res = run_live(ROOT, os.path.join(args.out, "live_tmp"), args.parts, args.photos, args.minutes)
     day = datetime.date.today().isoformat()

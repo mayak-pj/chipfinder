@@ -1,4 +1,4 @@
-# ChipFinder — правила для Claude Code
+# Digger — правила для Claude Code
 
 Программа для Windows 7: по фото микросхемы находит, скачивает, проверяет и подтверждает datasheet,
 даёт заключение о наличии памяти. Архитектура — `docs/ARCHITECTURE.md`. План — `docs/ROADMAP.md`.
@@ -29,12 +29,12 @@
 ## Жёсткие ограничения платформы
 - Код обязан работать на Python 3.8: никаких `match`, `list[str]`/`dict[...]` в аннотациях без
   `from __future__ import annotations`, `str.removeprefix`, `zip(strict=)`, `X | None`.
-  Проверка: `vermin --target=3.8- --no-tips chipfinder`.
+  Проверка: `vermin --target=3.8- --no-tips digger`.
 - Зависимости только из `requirements.txt` (версии под Win7; для Mac — маркеры `; sys_platform == "darwin"`).
   Новая зависимость — только с wheel для cp38 win_amd64; сообщи пользователю.
 - Никаких Windows-only или Mac-only API в коде программы (кроме изолированных мест с проверкой платформы).
 - Пути: русские буквы, пробелы, UNC (`\\server\share`). Картинки — через `np.fromfile` + `cv2.imdecode`.
-- Сеть — только через `chipfinder/core/netsafe.py`. Не обходить капчу, не отключать проверку сертификатов.
+- Сеть — только через `digger/core/netsafe.py`. Не обходить капчу, не отключать проверку сертификатов.
 - Ход поиска — только событиями `acquire/events.py` с ключом сообщения; текст на языке поиска (EN/中文/RU)
   из `data/i18n/*.json`. Новый ключ — сразу во все три словаря.
 - Неудачи обращения к сайтам классифицируются (`acquire/netdiag.py`, §4.11) и попадают в заключение.
@@ -49,7 +49,7 @@
 
 ## Модули и расширения (ARCHITECTURE §6)
 - Роли конвейера меняются через `config.json → modules`; интерфейсы — `core/interfaces.py`.
-- Новые функции с интерфейсом — как расширения (`chipfinder/extensions/`, `plugins/`) через `extensions/api.py`,
+- Новые функции с интерфейсом — как расширения (`digger/extensions/`, `plugins/`) через `extensions/api.py`,
   а не правкой главного окна. Изменение API или интерфейсов — только с записью в раздел «Решения».
 
 ## Распознавание (ARCHITECTURE §6.1)
@@ -62,7 +62,7 @@
 2. Сначала тест (pytest, `tests/`), потом код. Тесты без интернета: `tests/fakes/fake_http.py` и
    `tests/fixtures/`. Тесты с реальной сетью — `@pytest.mark.live`, только вручную.
 3. Перед коммитом всё зелёное: `python -m pytest -q -m "not live"` · `ruff check .` ·
-   `vermin --target=3.8- --no-tips chipfinder` · `git status` без my_test/my_reports.
+   `vermin --target=3.8- --no-tips digger` · `git status` без my_test/my_reports.
 4. Маленький коммит на шаг, сообщение по-русски: `шаг 3.2: адаптер DuckDuckGo + тесты`. `git push`.
    Отметь шаг `[x]` в `docs/ROADMAP.md`, добавь строку в `docs/PROGRESS.md`.
 5. Шаг больше ~300 строк изменений — раздели на подшаги и спроси пользователя.

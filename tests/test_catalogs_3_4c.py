@@ -4,11 +4,11 @@
 import logging
 import os
 
-from chipfinder.acquire.models import Lead
-from chipfinder.acquire.registry import Registry
-from chipfinder.acquire.sources.catalogs import china
-from chipfinder.acquire.sources.catalogs.common import is_blocked
-from chipfinder.core.netsafe import SafeHttp
+from digger.acquire.models import Lead
+from digger.acquire.registry import Registry
+from digger.acquire.sources.catalogs import china
+from digger.acquire.sources.catalogs.common import is_blocked
+from digger.core.netsafe import SafeHttp
 from tests.fakes.fake_http import FakeHttp
 from tests.test_source_china_catalogs import Q, SEARCH, make
 from tests.test_acquire_trial import data, run, LEADS, PDF

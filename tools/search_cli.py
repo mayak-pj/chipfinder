@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from chipfinder.acquire.events import Event, EventBus, EventCounters, LANG_LABELS, render  # noqa: E402
+from digger.acquire.events import Event, EventBus, EventCounters, LANG_LABELS, render  # noqa: E402
 
 ICONS = {"": u"⏳", "ok": u"✔", "found": u"✔", "empty": u"·", "fail": u"✘", "skip": u"⤼"}
 
@@ -147,11 +147,11 @@ def live(part: str, maker: str, package: str, everywhere: bool, out, translate: 
     """Полный поиск по настройкам программы; Ctrl+C — отмена поиска, а не обрыв программы."""
     import signal
 
-    from chipfinder.acquire.models import PhotoContext
-    from chipfinder.acquire.orchestrator import from_context
-    from chipfinder.core.config import load_config, setup_logging
-    from chipfinder.core.interfaces import Context
-    from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+    from digger.acquire.models import PhotoContext
+    from digger.acquire.orchestrator import from_context
+    from digger.core.config import load_config, setup_logging
+    from digger.core.interfaces import Context
+    from digger.modules.localdb_sqlite import SQLiteLocalDB
 
     cfg = load_config(ROOT)
     ctx = Context(cfg, ROOT, setup_logging(ROOT, cfg))
@@ -175,7 +175,7 @@ def live(part: str, maker: str, package: str, everywhere: bool, out, translate: 
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Консольный наблюдатель поиска ChipFinder")
+    ap = argparse.ArgumentParser(description="Консольный наблюдатель поиска Digger")
     ap.add_argument("part", nargs="?", help="партномер или код маркировки: настоящий поиск")
     ap.add_argument("--maker", default="", help="производитель, если известен")
     ap.add_argument("--package", default="", help="корпус, если известен (SOIC-8)")

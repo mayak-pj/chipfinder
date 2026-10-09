@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("PyQt5")
 
-from chipfinder.core.models import ChipReport, MemoryVerdict  # noqa: E402
+from digger.core.models import ChipReport, MemoryVerdict  # noqa: E402
 from test_latency import _pump  # noqa: E402
 from test_models import _png  # noqa: E402
 
@@ -22,7 +22,7 @@ def _report(path, part, has_memory, package="", pins=0):
 
 def test_photo_view_fits_any_size(qapp):
     from PyQt5.QtGui import QColor, QImage
-    from chipfinder.gui.chip_card import PHOTO_PAD, PhotoView
+    from digger.gui.chip_card import PHOTO_PAD, PhotoView
     v = PhotoView()
     assert v.pixmap() is None and v.text() == u"—"
     red = QColor("#c81e1e")
@@ -48,8 +48,8 @@ def test_photo_view_fits_any_size(qapp):
 
 
 def test_state_tag(qapp):
-    from chipfinder.gui.chip_card import StateTag
-    from chipfinder.gui.models import PHOTO_STATES
+    from digger.gui.chip_card import StateTag
+    from digger.gui.models import PHOTO_STATES
     tag = StateTag()
     assert tag.text() == "" and tag.isHidden()               # у нового фото метки нет
     widths = {}
@@ -103,8 +103,8 @@ def test_card_header_follows_photo(window, tmp_path, monkeypatch):
 
 
 def test_long_file_name_is_shortened(qapp, tmp_path):
-    from chipfinder.gui.chip_card import TITLE_MAX, ChipCard
-    from chipfinder.ui import theme as ui_theme
+    from digger.gui.chip_card import TITLE_MAX, ChipCard
+    from digger.ui import theme as ui_theme
     card = ChipCard(ui_theme.apply_theme(qapp, "light", str(tmp_path / "theme")))
     name = u"очень длинное имя файла с фото микросхемы " * 3 + ".png"
     card.set_header(name, "", "new")
@@ -117,7 +117,7 @@ def test_long_file_name_is_shortened(qapp, tmp_path):
 
 def test_window_layout(window):
     from PyQt5.QtCore import Qt
-    from chipfinder.gui.chip_card import FIELDS_WIDTH
+    from digger.gui.chip_card import FIELDS_WIDTH
     w, app = window
     assert [w.tabs.tabText(i) for i in range(4)] == [u"Заключение", u"Документы", u"Почему", u"Журнал"]
     assert w.right.orientation() == Qt.Vertical and w.right.widget(0) is w.card

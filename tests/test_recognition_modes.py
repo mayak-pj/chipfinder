@@ -7,10 +7,10 @@ import time
 
 import pytest
 
-from chipfinder.core.config import read_json
-from chipfinder.core.models import ChipReport, OcrAttempt, OcrResult
-from chipfinder.core.pipeline import ChipPipeline
-from chipfinder.recognition.manager import RecognitionManager
+from digger.core.config import read_json
+from digger.core.models import ChipReport, OcrAttempt, OcrResult
+from digger.core.pipeline import ChipPipeline
+from digger.recognition.manager import RecognitionManager
 from test_recognition import VARIANTS, _manager, _provider
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,7 +98,7 @@ def window(tmp_path, monkeypatch):
     shutil.copy(os.path.join(APP, "data", "sources.json"), str(app_dir / "data"))
     for name in ("warning", "critical", "information"):
         monkeypatch.setattr(QMessageBox, name, staticmethod(lambda *a, **k: 0))
-    from chipfinder.gui.main_window import MainWindow
+    from digger.gui.main_window import MainWindow
     w = MainWindow(str(app_dir))
     yield w, app
     w.close()
@@ -144,7 +144,7 @@ def test_window_mode_list_and_rerun(window, samples_dir, monkeypatch):
 
 def test_settings_save_default_mode(window):
     w, _app = window
-    from chipfinder.gui.dialogs import SettingsDialog
+    from digger.gui.dialogs import SettingsDialog
     dlg = SettingsDialog(w.ctx, w)
     assert dlg.ocr_mode.currentData() == "auto"
     dlg.ocr_mode.setCurrentIndex(dlg.ocr_mode.findData("compare"))

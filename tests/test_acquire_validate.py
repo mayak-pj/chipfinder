@@ -7,9 +7,9 @@ from pypdf import PdfWriter
 from pypdf.generic import (ArrayObject, DecodedStreamObject, DictionaryObject, NameObject, NumberObject,
                            TextStringObject)
 
-from chipfinder.acquire.events import EventBus
-from chipfinder.acquire.models import Lead, ValidationResult
-from chipfinder.acquire.validate import validate_pdf
+from digger.acquire.events import EventBus
+from digger.acquire.models import Lead, ValidationResult
+from digger.acquire.validate import validate_pdf
 
 TEXT = "NE555 Precision Timer datasheet, 8-pin DIP and SOIC packages"
 
@@ -240,7 +240,7 @@ def test_without_bus_and_roundtrip(tmp_path):
 
 
 def test_event_texts_in_all_languages():
-    from chipfinder.acquire.events import KEYS, load_catalog
+    from digger.acquire.events import KEYS, load_catalog
     assert KEYS["validate.damaged"] == "fail"
     for lang in ("en", "zh", "ru"):
         assert "validate.damaged" in load_catalog(lang)

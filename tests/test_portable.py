@@ -7,7 +7,7 @@ import zipfile
 
 import pytest
 
-from chipfinder.recognition.providers.tesseract import find_tesseract
+from digger.recognition.providers.tesseract import find_tesseract
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 bp = pytest.importorskip("build_portable", reason="нет tools/ (портативная сборка)")
@@ -33,7 +33,7 @@ def test_find_tesseract_bundled(tmp_path):
 def test_qt_plugins_dir_found():
     # путь к плагинам Qt задаётся явно: из папки с русскими буквами PyQt5 сам его не находит
     pytest.importorskip("PyQt5")
-    from chipfinder.gui.main_window import qt_plugins_dir
+    from digger.gui.main_window import qt_plugins_dir
     assert os.path.isdir(os.path.join(qt_plugins_dir(), "platforms"))
 
 
@@ -47,7 +47,7 @@ def test_requirements_for_windows():
 def test_program_files_exclude_private():
     files = [rel for _src, rel in bp.program_files()]
     assert "run.py" in files and "config.default.json" in files
-    assert any(f.startswith("chipfinder/") for f in files)
+    assert any(f.startswith("digger/") for f in files)
     assert any(f.startswith("tests/samples/") for f in files)
     bad = ("my_test/", "my_reports/", ".venv/", ".git/", "tools/", "config.json", "data/library/x")
     assert not any(f.startswith(b) for f in files for b in bad)
@@ -64,8 +64,8 @@ def test_bat_files_cp866_crlf():
         data = bp.bat_bytes(text)
         assert b"\r\n" in data and b"\n\n" not in data.replace(b"\r\n", b"")
         data.decode("cp866")
-    assert "ChipFinder.bat" in bp.BATS and "Самопроверка.bat" in bp.BATS
-    assert "pythonw.exe" in bp.BATS["ChipFinder.bat"]
+    assert "Digger.bat" in bp.BATS and "Самопроверка.bat" in bp.BATS
+    assert "pythonw.exe" in bp.BATS["Digger.bat"]
     assert "--selftest" in bp.BATS["Самопроверка.bat"]
 
 
@@ -74,13 +74,13 @@ def test_zip_russian_names_cp866(tmp_path):
     _touch(str(src / "Самопроверка.bat"))
     _touch(str(src / "run.py"))
     out = str(tmp_path / "a.zip")
-    bp.make_zip(str(src), out, "ChipFinder")
+    bp.make_zip(str(src), out, "Digger")
     with open(out, "rb") as f:
         raw = f.read()
-    assert "ChipFinder/Самопроверка.bat".encode("cp866") in raw   # Проводник Win7 читает имена в cp866
+    assert "Digger/Самопроверка.bat".encode("cp866") in raw   # Проводник Win7 читает имена в cp866
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         assert {i.flag_bits & 0x800 for i in z.infolist()} == {0}   # без флага UTF-8
-        assert "ChipFinder/run.py" in z.namelist()
+        assert "Digger/run.py" in z.namelist()
 
 
 def test_checks_in_build():

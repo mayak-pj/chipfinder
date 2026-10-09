@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from chipfinder.extensions.api import ExtensionDb
-from chipfinder.extensions.loader import BUILTIN_DIR
+from digger.extensions.api import ExtensionDb
+from digger.extensions.loader import BUILTIN_DIR
 
 pytest.importorskip("PyQt5")
 

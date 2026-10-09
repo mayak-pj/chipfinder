@@ -2,9 +2,9 @@
 """Тип документа (шаг 4.2). PDF — синтетические, из tests/fixtures/make_pdfs.py."""
 import pytest
 
-from chipfinder.acquire import classify as C
-from chipfinder.acquire.extract import DocText, facts_from_text
-from chipfinder.acquire.models import DocFacts
+from digger.acquire import classify as C
+from digger.acquire.extract import DocText, facts_from_text
+from digger.acquire.models import DocFacts
 from tests.fixtures import make_pdfs
 
 

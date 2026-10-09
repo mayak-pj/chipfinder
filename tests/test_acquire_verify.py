@@ -5,9 +5,9 @@ import os
 
 import pytest
 
-from chipfinder.acquire import decide as D
-from chipfinder.acquire import verify as V
-from chipfinder.acquire.models import DocFacts, Evidence, PhotoContext, ValidationResult
+from digger.acquire import decide as D
+from digger.acquire import verify as V
+from digger.acquire.models import DocFacts, Evidence, PhotoContext, ValidationResult
 from tests.fixtures import make_pdfs
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

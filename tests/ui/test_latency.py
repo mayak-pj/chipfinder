@@ -57,7 +57,7 @@ class _Lateness(object):
 # -------------------- объединение событий --------------------
 
 def test_coalescer_batches_posts_from_a_thread(qapp):
-    from chipfinder.gui.worker import Coalescer
+    from digger.gui.worker import Coalescer
     c = Coalescer(interval_ms=33)
     batches = []
     c.flushed.connect(batches.append)
@@ -79,7 +79,7 @@ def test_coalescer_batches_posts_from_a_thread(qapp):
 
 
 def test_coalescer_flush_now_and_idle(qapp):
-    from chipfinder.gui.worker import Coalescer
+    from digger.gui.worker import Coalescer
     c = Coalescer(interval_ms=33)
     batches = []
     c.flushed.connect(batches.append)
@@ -98,7 +98,7 @@ def test_coalescer_flush_now_and_idle(qapp):
 # -------------------- пул задач --------------------
 
 def test_pool_runs_jobs_in_parallel_and_reports(qapp):
-    from chipfinder.gui.worker import Job, TaskPool
+    from digger.gui.worker import Job, TaskPool
     pool = TaskPool()
     gate = threading.Event()
     got, lines, finished = [], [], []
@@ -132,7 +132,7 @@ def test_pool_runs_jobs_in_parallel_and_reports(qapp):
 
 def test_job_is_free_inside_its_done_handler(qapp):
     """Обработчик результата может сразу запустить следующую задачу: первая уже не считается идущей."""
-    from chipfinder.gui.worker import Job, TaskPool
+    from digger.gui.worker import Job, TaskPool
     pool = TaskPool()
     seen = []
     j = Job(lambda progress, cancel: 7)

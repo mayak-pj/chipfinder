@@ -10,10 +10,10 @@ pytest.importorskip("PyQt5")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test_acquire_store import make_db, make_rec  # noqa: E402
 
-from chipfinder.acquire import review  # noqa: E402
-from chipfinder.acquire.models import Evidence  # noqa: E402
-from chipfinder.acquire.store import AcquireStore  # noqa: E402
-from chipfinder.gui.docs_model import DocsModel, evidence_lines, why_html  # noqa: E402
+from digger.acquire import review  # noqa: E402
+from digger.acquire.models import Evidence  # noqa: E402
+from digger.acquire.store import AcquireStore  # noqa: E402
+from digger.gui.docs_model import DocsModel, evidence_lines, why_html  # noqa: E402
 
 
 @pytest.fixture

@@ -29,7 +29,7 @@ SAMPLES = ("stm32.png", "at24c02.png", "w25q64_rot.png", "lm358_180.png")
 
 def make_app_dir(theme: str) -> str:
     """Временная папка программы (с русскими буквами в пути) с нужной темой в config.json."""
-    app_dir = os.path.join(tempfile.mkdtemp(prefix="chipfinder_shots_"), u"программа")
+    app_dir = os.path.join(tempfile.mkdtemp(prefix="digger_shots_"), u"программа")
     os.makedirs(os.path.join(app_dir, "data"))
     shutil.copy(os.path.join(ROOT, "config.default.json"), app_dir)
     shutil.copytree(os.path.join(ROOT, "data", "i18n"), os.path.join(app_dir, "data", "i18n"))
@@ -67,7 +67,7 @@ def sample_photos():
 
 def demo_search():
     """События примера поиска (`tools/search_cli.py`) с уровнями источников — до подтверждения, оно ещё «идёт»."""
-    from chipfinder.acquire.events import Event
+    from digger.acquire.events import Event
     from search_cli import DEMO
     by_kind = {"local": "local", "maker": "maker", "site": "catalog", "market": "russian"}
     by_lang = {"en": "search", "zh": "china", "ru": "russian"}
@@ -106,8 +106,8 @@ def wait_idle(app, w, timeout: float = 30.0) -> None:
 
 def demo_documents(w) -> None:
     """Вкладки «Документы» и «Почему» с тремя примерами записей поиска (выдуманные, не настоящие datasheet)."""
-    from chipfinder.acquire.models import AcquisitionRecord, DocFacts, Evidence, Lead, Verdict
-    from chipfinder.core.models import ChipReport
+    from digger.acquire.models import AcquisitionRecord, DocFacts, Evidence, Lead, Verdict
+    from digger.core.models import ChipReport
     rows = (("confirmed", 92, "ti", "https://www.ti.com/lit/ds/ne555.pdf", [("E1", 30, u"NE555P precision timer", 1),
                                                                             ("E6", 10, u"Texas Instruments", 1)], []),
             ("needs_user", 48, "alldatasheet", "https://www.alldatasheet.com/ne555.pdf",
@@ -132,8 +132,8 @@ def demo_documents(w) -> None:
 
 
 def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
-    from chipfinder.gui.dialogs import ExtensionsDialog, SettingsDialog
-    from chipfinder.gui.main_window import MainWindow
+    from digger.gui.dialogs import ExtensionsDialog, SettingsDialog
+    from digger.gui.main_window import MainWindow
     app_dir = make_app_dir(theme)
     w = MainWindow(app_dir)
     try:
@@ -159,7 +159,7 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         w.tabs.setCurrentIndex(2)
         app.processEvents()
         save(w, name("why"))
-        from chipfinder.acquire.conclusion import Conclusion, SiteNote
+        from digger.acquire.conclusion import Conclusion, SiteNote
         c = Conclusion(part="NE555P", sources=14, languages=3, seconds=52)
         c.protected = [SiteNote("alldatasheet.com", "captcha", "https://www.alldatasheet.com/view.jsp?Searchword=NE555P", "search")]
         c.blocked = [SiteNote("ti.com", "dns")]
@@ -179,7 +179,7 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
             time.sleep(0.01)
         save(w, name("feed"))
         w.search_feed.set_running(False)
-        from chipfinder.gui.dialogs import AdaptersDialog, DiagnosticsDialog
+        from digger.gui.dialogs import AdaptersDialog, DiagnosticsDialog
         diag = DiagnosticsDialog([{"ok": True, "category": u"Каталог", "name": "alldatasheet", "detail": "200",
                                    "url": "https://x.example"},
                                   {"ok": False, "category": u"Производитель", "name": "ti.com", "detail": "DNS",
@@ -192,7 +192,7 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
         save(w, name("log"))
         inst = w.ext.get("blocked_sites").instance if w.ext and w.ext.get("blocked_sites") else None
         if inst is not None:                                    # вкладка «Сайты без доступа» (7.8) с примером данных
-            from chipfinder.acquire.access import AccessLog
+            from digger.acquire.access import AccessLog
             log = AccessLog(w.ctx.modules["local_db"])
             log.record_failure("ti.com", "network_blocked", "NE555P", "https://www.ti.com/x", "maker", 0.4)
             log.record_failure("st.com", "network_blocked", "L7805")
@@ -217,8 +217,8 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
             save(w, name("history"))
         sst = w.ext.get("search_stats").instance if w.ext and w.ext.get("search_stats") else None
         if sst is not None:                                     # вкладка «Статистика поиска» (7.10)
-            from chipfinder.acquire.events import EventBus
-            from chipfinder.acquire.stats import SearchStats, StatsRecorder
+            from digger.acquire.events import EventBus
+            from digger.acquire.stats import SearchStats, StatsRecorder
             stats = SearchStats(w.ctx.modules["local_db"])
             sbus = EventBus()
             rec = StatsRecorder(stats, sbus)
@@ -249,7 +249,7 @@ def shoot(app, theme: str, out_dir: str, prefix: str, ocr: bool) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=u"Снимки окна ChipFinder")
+    ap = argparse.ArgumentParser(description=u"Снимки окна Digger")
     ap.add_argument("--out", default=os.path.join(ROOT, "my_reports", "screens"))
     ap.add_argument("--prefix", default="window")
     ap.add_argument("--themes", default="light")
@@ -261,7 +261,7 @@ def main(argv=None) -> int:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PyQt5.QtCore import QCoreApplication
     from PyQt5.QtWidgets import QApplication, QMessageBox
-    from chipfinder.gui.main_window import install_russian, qt_plugins_dir
+    from digger.gui.main_window import install_russian, qt_plugins_dir
     plugins = qt_plugins_dir()
     if plugins:
         QCoreApplication.addLibraryPath(plugins)

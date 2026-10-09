@@ -6,10 +6,10 @@ import os
 
 import pytest
 
-from chipfinder.acquire.access import AccessLog
-from chipfinder.core.interfaces import Context
-from chipfinder.extensions.loader import BUILTIN_DIR
-from chipfinder.modules.localdb_sqlite import SQLiteLocalDB
+from digger.acquire.access import AccessLog
+from digger.core.interfaces import Context
+from digger.extensions.loader import BUILTIN_DIR
+from digger.modules.localdb_sqlite import SQLiteLocalDB
 
 pytest.importorskip("PyQt5")
 
@@ -22,7 +22,7 @@ def _mod():
 
 
 def _log(tmp_path):
-    cfg = {"paths": {"db": "data/chipfinder.sqlite", "library_dir": "lib"}}
+    cfg = {"paths": {"db": "data/digger.sqlite", "library_dir": "lib"}}
     log = AccessLog(SQLiteLocalDB({}, Context(cfg, str(tmp_path), logging.getLogger("t"))))
     log.record_failure("ti.com", "network_blocked", "NE555P", "https://www.ti.com/x", "maker", 0.4)
     log.record_failure("ti.com", "network_blocked", "LM358")
