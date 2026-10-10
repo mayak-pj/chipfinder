@@ -8,8 +8,9 @@ command -v tesseract >/dev/null || brew install tesseract
 
 uv python install 3.8
 [ -d .venv ] || uv venv --python 3.8 .venv
-uv pip install --python .venv/bin/python -r requirements.txt
-uv pip install --python .venv/bin/python pytest ruff vermin
+# --no-deps: rapidocr тянет opencv-python поверх opencv-python-headless (как в CI)
+uv pip install --python .venv/bin/python --no-deps -r requirements.txt
+uv pip install --python .venv/bin/python -r requirements-dev.txt
 
 .venv/bin/python run.py --selftest
 echo "Готово. Запуск: .venv/bin/python run.py"
